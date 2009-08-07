@@ -1,0 +1,5 @@
+SEQUENCE = [
+'channame',
+'channame2',
+]
+
