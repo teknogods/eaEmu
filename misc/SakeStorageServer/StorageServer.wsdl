@@ -1,0 +1,701 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://gamespy.net/sake" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" targetNamespace="http://gamespy.net/sake" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://gamespy.net/sake">
+      <s:element name="CreateRecord">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfRecordField" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfRecordField">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="RecordField" type="tns:RecordField" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="RecordField">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="name" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="tns:RecordValue" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="RecordValue">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="byteValue" type="tns:ByteValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="shortValue" type="tns:ShortValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="intValue" type="tns:IntValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="floatValue" type="tns:FloatValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="asciiStringValue" type="tns:AsciiStringValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="unicodeStringValue" type="tns:UnicodeStringValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="booleanValue" type="tns:BooleanValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="dateAndTimeValue" type="tns:DateAndTimeValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="binaryDataValue" type="tns:BinaryDataValue" />
+          <s:element minOccurs="0" maxOccurs="1" name="int64Value" type="tns:Int64Value" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ByteValue">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:unsignedByte" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ShortValue">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:short" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="IntValue">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FloatValue">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:float" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="AsciiStringValue">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="value" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="UnicodeStringValue">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="value" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="BooleanValue">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:boolean" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="DateAndTimeValue">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:dateTime" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="BinaryDataValue">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="value" type="s:base64Binary" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Int64Value">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="value" type="s:long" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="CreateRecordResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CreateRecordResult" type="tns:Result" />
+            <s:element minOccurs="1" maxOccurs="1" name="recordid" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:simpleType name="Result">
+        <s:restriction base="s:string">
+          <s:enumeration value="Success" />
+          <s:enumeration value="DatabaseUnavailable" />
+          <s:enumeration value="LoginTicketInvalid" />
+          <s:enumeration value="LoginTicketExpired" />
+          <s:enumeration value="TableNotFound" />
+          <s:enumeration value="RecordNotFound" />
+          <s:enumeration value="FieldNotFound" />
+          <s:enumeration value="FieldTypeInvalid" />
+          <s:enumeration value="NoPermission" />
+          <s:enumeration value="RecordLimitReached" />
+          <s:enumeration value="AlreadyRated" />
+          <s:enumeration value="NotRateable" />
+          <s:enumeration value="NotOwned" />
+          <s:enumeration value="FilterInvalid" />
+          <s:enumeration value="SortInvalid" />
+          <s:enumeration value="TargetFilterInvalid" />
+          <s:enumeration value="CertificateInvalid" />
+        </s:restriction>
+      </s:simpleType>
+      <s:element name="UpdateRecord">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="recordid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfRecordField" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateRecordResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdateRecordResult" type="tns:Result" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="DeleteRecord">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="recordid" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="DeleteRecordResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="DeleteRecordResult" type="tns:Result" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="SearchForRecords">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="fields" type="tns:ArrayOfString" />
+            <s:element minOccurs="0" maxOccurs="1" name="filter" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="sort" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="offset" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="max" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="targetfilter" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="surrounding" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="ownerids" type="tns:ArrayOfInt" />
+            <s:element minOccurs="1" maxOccurs="1" name="cacheFlag" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfString">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="string" nillable="true" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfInt">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="int" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="SearchForRecordsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="SearchForRecordsResult" type="tns:Result" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfArrayOfRecordValue" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfArrayOfRecordValue">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="ArrayOfRecordValue" nillable="true" type="tns:ArrayOfRecordValue" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfRecordValue">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="RecordValue" type="tns:RecordValue" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="GetMyRecords">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="fields" type="tns:ArrayOfString" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetMyRecordsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetMyRecordsResult" type="tns:Result" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfArrayOfRecordValue" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetSpecificRecords">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recordids" type="tns:ArrayOfInt" />
+            <s:element minOccurs="0" maxOccurs="1" name="fields" type="tns:ArrayOfString" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetSpecificRecordsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetSpecificRecordsResult" type="tns:Result" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfArrayOfRecordValue" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRandomRecords">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="fields" type="tns:ArrayOfString" />
+            <s:element minOccurs="0" maxOccurs="1" name="filter" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="max" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRandomRecordsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetRandomRecordsResult" type="tns:Result" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfArrayOfRecordValue" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecordCount">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="filter" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="cacheFlag" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecordCountResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetRecordCountResult" type="tns:Result" />
+            <s:element minOccurs="1" maxOccurs="1" name="count" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="RateRecord">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="recordid" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="rating" type="s:unsignedByte" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="RateRecordResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="RateRecordResult" type="tns:Result" />
+            <s:element minOccurs="1" maxOccurs="1" name="numRatings" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="averageRating" type="s:float" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecordLimit">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="tableid" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecordLimitResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetRecordLimitResult" type="tns:Result" />
+            <s:element minOccurs="1" maxOccurs="1" name="limitPerOwner" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="numOwned" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetMyImages">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="profileid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetMyImagesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetMyImagesResult" type="tns:Result" />
+            <s:element minOccurs="0" maxOccurs="1" name="values" type="tns:ArrayOfArrayOfRecordValue" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="DeleteImage">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="gameid" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="fileid" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="loginTicket" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="DeleteImageResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="DeleteImageResult" type="tns:Result" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="CreateRecordSoapIn">
+    <wsdl:part name="parameters" element="tns:CreateRecord" />
+  </wsdl:message>
+  <wsdl:message name="CreateRecordSoapOut">
+    <wsdl:part name="parameters" element="tns:CreateRecordResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdateRecordSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdateRecord" />
+  </wsdl:message>
+  <wsdl:message name="UpdateRecordSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdateRecordResponse" />
+  </wsdl:message>
+  <wsdl:message name="DeleteRecordSoapIn">
+    <wsdl:part name="parameters" element="tns:DeleteRecord" />
+  </wsdl:message>
+  <wsdl:message name="DeleteRecordSoapOut">
+    <wsdl:part name="parameters" element="tns:DeleteRecordResponse" />
+  </wsdl:message>
+  <wsdl:message name="SearchForRecordsSoapIn">
+    <wsdl:part name="parameters" element="tns:SearchForRecords" />
+  </wsdl:message>
+  <wsdl:message name="SearchForRecordsSoapOut">
+    <wsdl:part name="parameters" element="tns:SearchForRecordsResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetMyRecordsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetMyRecords" />
+  </wsdl:message>
+  <wsdl:message name="GetMyRecordsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetMyRecordsResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetSpecificRecordsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetSpecificRecords" />
+  </wsdl:message>
+  <wsdl:message name="GetSpecificRecordsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetSpecificRecordsResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRandomRecordsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRandomRecords" />
+  </wsdl:message>
+  <wsdl:message name="GetRandomRecordsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRandomRecordsResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRecordCountSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRecordCount" />
+  </wsdl:message>
+  <wsdl:message name="GetRecordCountSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRecordCountResponse" />
+  </wsdl:message>
+  <wsdl:message name="RateRecordSoapIn">
+    <wsdl:part name="parameters" element="tns:RateRecord" />
+  </wsdl:message>
+  <wsdl:message name="RateRecordSoapOut">
+    <wsdl:part name="parameters" element="tns:RateRecordResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRecordLimitSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRecordLimit" />
+  </wsdl:message>
+  <wsdl:message name="GetRecordLimitSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRecordLimitResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetMyImagesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetMyImages" />
+  </wsdl:message>
+  <wsdl:message name="GetMyImagesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetMyImagesResponse" />
+  </wsdl:message>
+  <wsdl:message name="DeleteImageSoapIn">
+    <wsdl:part name="parameters" element="tns:DeleteImage" />
+  </wsdl:message>
+  <wsdl:message name="DeleteImageSoapOut">
+    <wsdl:part name="parameters" element="tns:DeleteImageResponse" />
+  </wsdl:message>
+  <wsdl:portType name="StorageServerSoap">
+    <wsdl:operation name="CreateRecord">
+      <wsdl:input message="tns:CreateRecordSoapIn" />
+      <wsdl:output message="tns:CreateRecordSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdateRecord">
+      <wsdl:input message="tns:UpdateRecordSoapIn" />
+      <wsdl:output message="tns:UpdateRecordSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="DeleteRecord">
+      <wsdl:input message="tns:DeleteRecordSoapIn" />
+      <wsdl:output message="tns:DeleteRecordSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="SearchForRecords">
+      <wsdl:input message="tns:SearchForRecordsSoapIn" />
+      <wsdl:output message="tns:SearchForRecordsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetMyRecords">
+      <wsdl:input message="tns:GetMyRecordsSoapIn" />
+      <wsdl:output message="tns:GetMyRecordsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetSpecificRecords">
+      <wsdl:input message="tns:GetSpecificRecordsSoapIn" />
+      <wsdl:output message="tns:GetSpecificRecordsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRandomRecords">
+      <wsdl:input message="tns:GetRandomRecordsSoapIn" />
+      <wsdl:output message="tns:GetRandomRecordsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecordCount">
+      <wsdl:input message="tns:GetRecordCountSoapIn" />
+      <wsdl:output message="tns:GetRecordCountSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="RateRecord">
+      <wsdl:input message="tns:RateRecordSoapIn" />
+      <wsdl:output message="tns:RateRecordSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecordLimit">
+      <wsdl:input message="tns:GetRecordLimitSoapIn" />
+      <wsdl:output message="tns:GetRecordLimitSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetMyImages">
+      <wsdl:input message="tns:GetMyImagesSoapIn" />
+      <wsdl:output message="tns:GetMyImagesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="DeleteImage">
+      <wsdl:input message="tns:DeleteImageSoapIn" />
+      <wsdl:output message="tns:DeleteImageSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="StorageServerSoap" type="tns:StorageServerSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CreateRecord">
+      <soap:operation soapAction="http://gamespy.net/sake/CreateRecord" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateRecord">
+      <soap:operation soapAction="http://gamespy.net/sake/UpdateRecord" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="DeleteRecord">
+      <soap:operation soapAction="http://gamespy.net/sake/DeleteRecord" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SearchForRecords">
+      <soap:operation soapAction="http://gamespy.net/sake/SearchForRecords" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetMyRecords">
+      <soap:operation soapAction="http://gamespy.net/sake/GetMyRecords" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetSpecificRecords">
+      <soap:operation soapAction="http://gamespy.net/sake/GetSpecificRecords" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRandomRecords">
+      <soap:operation soapAction="http://gamespy.net/sake/GetRandomRecords" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecordCount">
+      <soap:operation soapAction="http://gamespy.net/sake/GetRecordCount" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="RateRecord">
+      <soap:operation soapAction="http://gamespy.net/sake/RateRecord" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecordLimit">
+      <soap:operation soapAction="http://gamespy.net/sake/GetRecordLimit" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetMyImages">
+      <soap:operation soapAction="http://gamespy.net/sake/GetMyImages" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="DeleteImage">
+      <soap:operation soapAction="http://gamespy.net/sake/DeleteImage" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="StorageServerSoap12" type="tns:StorageServerSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CreateRecord">
+      <soap12:operation soapAction="http://gamespy.net/sake/CreateRecord" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateRecord">
+      <soap12:operation soapAction="http://gamespy.net/sake/UpdateRecord" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="DeleteRecord">
+      <soap12:operation soapAction="http://gamespy.net/sake/DeleteRecord" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SearchForRecords">
+      <soap12:operation soapAction="http://gamespy.net/sake/SearchForRecords" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetMyRecords">
+      <soap12:operation soapAction="http://gamespy.net/sake/GetMyRecords" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetSpecificRecords">
+      <soap12:operation soapAction="http://gamespy.net/sake/GetSpecificRecords" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRandomRecords">
+      <soap12:operation soapAction="http://gamespy.net/sake/GetRandomRecords" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecordCount">
+      <soap12:operation soapAction="http://gamespy.net/sake/GetRecordCount" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="RateRecord">
+      <soap12:operation soapAction="http://gamespy.net/sake/RateRecord" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecordLimit">
+      <soap12:operation soapAction="http://gamespy.net/sake/GetRecordLimit" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetMyImages">
+      <soap12:operation soapAction="http://gamespy.net/sake/GetMyImages" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="DeleteImage">
+      <soap12:operation soapAction="http://gamespy.net/sake/DeleteImage" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="StorageServer">
+    <wsdl:port name="StorageServerSoap" binding="tns:StorageServerSoap">
+      <soap:address location="http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx" />
+    </wsdl:port>
+    <wsdl:port name="StorageServerSoap12" binding="tns:StorageServerSoap12">
+      <soap12:address location="http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
