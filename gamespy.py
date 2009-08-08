@@ -15,8 +15,6 @@ from twisted.web.resource import Resource
 from twisted.protocols.portforward import *
 from twisted.words.protocols.irc import IRC
 
-from SOAPpy.SOAPBuilder import SOAPBuilder
-
 from matchmaking import *
 
 # TODO: move to own module, conditional import
