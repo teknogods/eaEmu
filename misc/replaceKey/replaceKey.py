@@ -9,7 +9,7 @@ import base64
 import traceback
 import struct
 
-def getLatestRa3():
+def getRa3():
    regKey = r'Software\Electronic Arts\Electronic Arts\Red Alert 3'
    regVal = 'Install Dir'
    path = RegQueryValueEx(RegOpenKey(HKEY_LOCAL_MACHINE, regKey), regVal)[0]
@@ -17,14 +17,16 @@ def getLatestRa3():
    dataDir = os.path.join(path, 'Data')
    return os.path.join(dataDir, 'ra3_{0}.game'.format(sorted([Decimal(re.match(pat, x).group(1)) for x in os.listdir(dataDir) if re.match(pat, x)])[-1]))
 
+def getMercs2():
+   regKey = r'Software\EA Games\Mercenaries 2 World in Flames'
+   regVal = 'Install Dir'
+   return os.join.path(RegQueryValueEx(RegOpenKey(HKEY_LOCAL_MACHINE, regKey), regVal)[0], 'Mercenaries2.exe')
+
 def main():
    try:
-      regKey = r'Software\EA Games\Mercenaries 2 World in Flames'
-      regVal = 'Install Dir'
-      path = RegQueryValueEx(RegOpenKey(HKEY_LOCAL_MACHINE, regKey), regVal)[0]
 
-      #gameExe = os.path.join(path, 'Mercenaries2.exe')
-      gameExe = getLatestRa3()
+      #gameExe = getMercs2()
+      gameExe = getRa3()
 
 
 
@@ -47,8 +49,8 @@ def main():
       p3 = ip.split('.', 2)[-1]
       patches = [
                  (oldKey, newKey),
-                 (dom+subDom, struct.pack('{0}s{1}s'.format(len(dom), len(subDom)), '.'+p3, '.'+p2)),
-                 ('cncra3-pc\0', '{0}'.format(p1)),
+                 #(dom+subDom, struct.pack('{0}s{1}s'.format(len(dom), len(subDom)), '.'+p3, '.'+p2)),
+                 #('cncra3-pc\0', '{0}'.format(p1)),
                  
                  # MERCS2 is broken -- patch works but then first octet gets sent as "clientString" value and client
                  # dc's self.
