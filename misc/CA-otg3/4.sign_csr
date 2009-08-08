@@ -1,0 +1,6 @@
+test -z $1 && echo "give name to operate on" && exit
+name=$1
+
+cp otg3.cer demoCA/cacert.pem
+cp otg3.key demoCA/private/cakey.pem
+openssl ca -extensions x509_extensions -config ca.conf -notext -out $name.cer -days 999999 -infiles $name.csr

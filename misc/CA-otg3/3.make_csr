@@ -1,0 +1,4 @@
+test -z $1 && echo "give name to operate on" && exit
+name=$1
+openssl req -new -key $name.key -out $name.csr -config $name.conf -extensions x509_extensions
+

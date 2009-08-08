@@ -1,0 +1,1 @@
+openssl req -new -x509 -out otg3.cer -key otg3.key -days 9999999 -config ca.conf
