@@ -1,12 +1,12 @@
 import warnings
 warnings.simplefilter('ignore', DeprecationWarning)
 
-ui = None
+interface = None
 
 try:
    import wx
-   import wxMain
-   ui = wxMain
+   import ui.wx.wxMain
+   interface = ui.wx.wxMain
 except:
    print 'Couldn\'t import WX, running in console-only mode.'
    
@@ -27,7 +27,7 @@ servers = {
    # TODO: maybe move port #'s and hosts into the classes themselves?
    
    # Men of War
-   'menofwar.MowService':[
+   'gamespy.games.menofwar.MowService':[
       ('gpcm.gamespy.com', 29900),
       ('peerchat.gamespy.com', 6667),
       ('files.bestway.com.ua', 80),
@@ -42,18 +42,18 @@ servers = {
       ],
 
    # Mercs 2
-   'mercs2.Mercs2Service':[
+   'ea.games.mercs2.Mercs2Service':[
       ('mercs2-pc.fesl.ea.com', 18710), # makes theater server at port +1
       #('mercs2-theater.fesl.ea.com', 18715), #not needed since hostname sent by fesl
    ],
     
    # Burnout Paradise The Ultimate Box
-   'pcburnout08.Burnout08Service':[
+   'ea.games.pcburnout08.Burnout08Service':[
       ('pcburnout08.ea.com', 21841), # makes theater(ish) server at port +1
    ],
 
    # RA 3
-   'redalert3.RedAlert3Service':[
+   'ea.games.redalert3.RedAlert3Service':[
       ('cncra3-pc.fesl.ea.com', 18840),
       #('cncra3-pc.theater.ea.com', 18845), # not in use by EA, not strictly needed anyway
       ('redalert3pc.available.gamespy.com', 27900),
@@ -77,15 +77,15 @@ def main(argv=None):
    else:
       print '{0} not found -- network traffic logging disabled.'.format(logCfg)
       
-   if ui:
-      ui.servers = servers #TODO: decouple this list from main methods
-      ui.main(argv)
+   if interface:
+      interface.servers = servers #TODO: decouple this list from main methods
+      interface.main(argv)
    else:
       log.startLogging(sys.stdout)
-      for serviceName in ['redalert3.RedAlert3Service']:
+      for serviceName in ['ea.games.redalert3.RedAlert3Service']:
          addresses = servers[serviceName]
          mod, name = serviceName.rsplit('.', 1)
-         service = getattr(__import__(mod), name)(addresses)
+         service = getattr(__import__(mod, fromlist=[name]), name)(addresses)
          service.startService()
       reactor.run()
 
