@@ -1,0 +1,59 @@
+<QMMaps>
+MAP_MP_2_FEASEL1
+MAP_MP_2_BLACK1B
+MAP_MP_2_FEASEL5
+MAP_MP_2_FEASEL8
+MAP_MP_2_RAO1
+MAP_MP_2_FEASEL4
+MAP_MP_2_FEASEL6
+MAP_MP_4_FEASEL6
+MAP_MP_4_STEWART_1
+MAP_MP_4_FEASEL2
+MAP_MP_4_FEASEL5
+MAP_MP_4_BLACK_XSLICE
+</QMMaps>
+
+<Manglers>
+  mangler1.generals.ea.com:4321
+  mangler2.generals.ea.com:4321
+  mangler3.generals.ea.com:4321
+  mangler4.generals.ea.com:4321
+</Manglers>
+
+<QMBot>
+  ID=167408418
+</QMBot>
+
+<PingServers>
+  203.166.93.50
+  211.233.72.38
+  159.153.224.10
+  211.72.252.17
+</PingServers>
+
+<PingDuration>
+  reps = 1
+  timeout = 1000
+  low = 100
+  med = 400
+</PingDuration>
+
+<Ladders>
+AutoMatch_1vs1
+AutoMatch_2vs2
+</Ladders>
+
+<VIP>
+  19576023
+  21525197
+  95243469
+  93332782
+  95701019
+  93335431
+  95673191
+  95688731
+</VIP>
+
+<Custom>
+  restricted = 1
+</Custom>
