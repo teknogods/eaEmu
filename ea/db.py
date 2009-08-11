@@ -8,7 +8,7 @@ try:
    import django.db.models
    
    from dj.eaEmu import models
-   from dj.eaEmu.models import GameList, Player, EnterGameRequest
+   from dj.eaEmu.models import GameList, Player, EnterGameRequest, Persona
 except Exception, e:
    print 'Exception while importing django modules:', e
    # generate dummy classes here so we can at least load up
@@ -27,10 +27,12 @@ except Exception, e:
    makeClasses('models', ['Game'])
    #FIXME
 
-class Partition: # unused
-   lists = [] # gamelists in this partition
-   id = ''
-   name = ''
+# TODO: use class method assignment rather than metaclasses??
+
+#class Partition: # unused
+#   lists = [] # gamelists in this partition
+#   id = ''
+#   name = ''
 
 class djProxy(django.db.models.base.ModelBase):
    def __new__(cls, name, bases, attrs):
@@ -41,7 +43,7 @@ class djProxy(django.db.models.base.ModelBase):
       new_class =  django.db.models.base.ModelBase.__new__(cls, name, bases, attrs)
       return new_class
 
-class Game(models.Game):
+class Game(models.GameSession):
    __metaclass__ = djProxy
       
    def Join(self, session): # TODO?
@@ -53,6 +55,7 @@ class Game(models.Game):
 class User(models.User):
    __metaclass__ = djProxy
    
+   #TODO: obsolete, remove?
    @classmethod
    def GetUser(cls, **kw):
       matches = cls.objects.filter(**kw)
@@ -65,8 +68,25 @@ class User(models.User):
    def CreateUser(name, pwd=None):
       # FIXME: .name must be enclosed by " if spaces are present (where to put this behavior?)
       return self.__class__.objects.create(login=name, password=pwd)
+   
+   def addPersona(self, name):
+      return Persona.objects.create(user=self, name=name)
+   
+   def getPersonas(self):
+      #return [str(x.name) for x in Persona.objects.filter(user=self)]
+      return [str(x.name) for x in self.persona_set.all()]
 
-class Session(models.Session):
+class Persona(models.Persona):
+   __metaclass__ = djProxy
+   
+   @classmethod
+   def getUser(cls, **kw):
+      '''
+      Retrieves the User object that this Persona belongs to.
+      '''
+      return cls.objects.get(**kw).user
+
+class Session(models.LoginSession):
    __metaclass__ = djProxy
    def __init__(self, *args, **kw):
       super(Session, self).__init__(*args, **kw)
@@ -104,7 +124,7 @@ class Theater(models.Theater):
       Player.objects.create(user_id=session.user_id, game_id=game_id)
       
    def CreateSession(self, ip, port):
-      return self.sessionClass.objects.create(theater=self, int_ip=ip, int_port=port, ext_ip=ip, ext_port=port)
+      return self.sessionClass.objects.create(theater=self, intIp=ip, intPort=port, extIp=ip, extPort=port)
 
    def ConnectionEstablished(self, key, user):
       self.sessionClass.objects.get(key=key).update(user=user)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python2.6
 import warnings
 warnings.simplefilter('ignore', DeprecationWarning)
 

@@ -1,3 +1,6 @@
+# TODO: enforce unique personas and give appropriate reply if a name is unavailable
+
+
 # FESL stands for:
 # Federated Ea Server Login?
 # FEderated Server Login?

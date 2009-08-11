@@ -6,9 +6,11 @@ from array import array
 import db
 
 class CipherFactory:
-   @staticmethod
-   def getMasterCipher(gameName, validate):
-      return EncTypeX(db.getGameKey(gameName), validate)
+   def __init__(self, gameName):
+      self.gameName = gameName
+      
+   def getMasterCipher(self, validate):
+      return EncTypeX(db.Game.objects.get(name=self.gameName).key, validate)
    
 #SERVER:  \lc\2\sesskey\123456789\proof\0\id\1\final\
 #CLIENT:  \authp\\pid\87654321\resp\7fcb80a6255c183dc149fb80abcd4675\lid\0\final\
@@ -50,14 +52,14 @@ def getMsName(gamename):
 
 class EncTypeX:
    def __init__(self, key, validate=None):
-      self.key = array('B', key)
+      self.key = array('B', str(key))
       self.encxkey = array('B', range(256) + [0]*5)
       self.start = 0
       
       # this is gathered from the first message to the server
       # and is generated randomly by the client.
       validate = validate or gs_rand_validate()
-      self.validate = array('B', validate)
+      self.validate = array('B', str(validate))
       
       # IV is a random array of bytes of random length - unsure what bounds are
       self.initDecoder(''.join(chr(random.getrandbits(8)) for _ in range(random.randint(9, 15))))

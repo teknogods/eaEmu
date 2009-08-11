@@ -42,10 +42,21 @@ class Peerchat(IRC):
    
    def irc_USER(self, prefix, params):
       #'XflsaqOa9X|165580976' is encodedIp|GSProfileId aka user, '127.0.0.1', 'peerchat.gamespy.com', 'a69b3a7a0837fdcd763fdeb0456e77cb' is cdkey
-      self.user, ip, host, cdkey = params
+      self.ircUser, ip, host, cdkey = params
    
    def irc_NICK(self, prefix, params):
+      # TODO: assert that this user has logged in to the main login server so that impersonation
+      # isn't possible like it is for the real gamespy
       self.nick = params[0]
+      # TODO: are personas available only for newer games?
+      # solution is to just create 1 persona by default for each login
+      self.user = db.Persona.objects.get(name=self.nick).user
+      
+      #HACKy way to maintain a list of all client connections
+      if not hasattr(self.factory, 'conns'):
+         self.factory.conns = {}
+      self.factory.conns[self.user] = self
+      
       self.sendMessage('001', self.nick, ':Welcome to the Matrix {0}'.format(self.nick))
       self.sendMessage('002', self.nick, ':Your host is xs5, running version 1.0') # TODO
       self.sendMessage('003', self.nick, ':This server was created Fri Oct 19 1979 at 21:50:00 PDT') # TODO
@@ -58,28 +69,22 @@ class Peerchat(IRC):
       self.sendMessage('706', self.nick, '1', ':Authenticated')
       
    def irc_JOIN(self, prefix, params):
+      # TODO? : support joining multiple channels
       chan = params[0]
       chanTokens = chan.split('!')
       if chanTokens[0] == '#GPG': # chat lobby
          chanId = chanTokens[1]
-         self.channel = db.getChannel(id=chanId)
-         self.sendMessage('JOIN', ':#GPG!{0}'.format(chanId), prefix=self.getClientPrefix())
+         self.channel = db.Channel.objects.get(id=chanId)
       elif chanTokens[0] == '#GSP': # we're joining a game lobby
-         self.channel = db.createChannel(name=chan, prettyName=chan, game=db.getGameInfo(name=chanTokens[1]))
-         self.sendMessage('JOIN', ':'+params[0], prefix=self.getClientPrefix())
-         
-   def getClientPrefix(self):
-      # follows RFC prefix BNF
-      return '{0}!{1}@*'.format(self.nick, self.user)
-         
-   def irc_PART(self, prefix, params):
-      pass
-   
-   def irc_QUIT(self, prefix, params):
-      pass
-   
-   def irc_MODE(self, prefix, params):
-      chan = self.channel.name
+         rSet = db.Channel.objects.filter(name=chan)
+         if len(rSet) == 0:
+            self.channel = db.Channel.objects.create(name=chan, prettyName=chan, game=db.Game.objects.get(name=chanTokens[1]))
+         elif len(rSet) == 1:
+            self.channel = rSet[0]
+         else: # duplicate channels!!
+            assert false
+      self.channel.users.add(self.user)
+      self.sendToChannel(self.channel, 'JOIN', ':'+self.channel.name) # notify everybody
       if chan.startswith('#GPG'):
          self.send_RPL_TOPIC('Click on the "Game Info" button at the top of your screen for '
                              'the latest information on patches, add-on files, interviews, '
@@ -87,12 +92,37 @@ class Peerchat(IRC):
          self.sendMessage('333', self.nick, chan, 'SERVER', '1245741924', prefix='s')
          # don't forget self in this list!
          self.send_RPL_NAMEREPLY((self.nick,))
-         self.send_RPL_ENDOFNAMES()
       elif chan.startswith('#GSP'):
          self.send_RPL_NOTOPIC()
          #self.sendNamesList()
          self.send_RPL_NAMEREPLY(('@'+self.nick,))
-         self.send_RPL_ENDOFNAMES()
+      self.send_RPL_ENDOFNAMES()
+      
+   def sendToChannel(self, channel, *params):
+      #TODO: this is probably a very inefficient way to do this...
+      # grab all users that are in the given channel
+      for user in channel.users.all():
+         if user == self.user: # exclude self
+            if params[0] == 'PRIVMSG':
+               continue
+         conn = self.factory.conns[user] # HACKy
+         # send them the message
+         conn.sendMessage(prefix=self.getClientPrefix(), *params)
+         
+   def getClientPrefix(self):
+      # follows RFC prefix BNF
+      return '{0}!{1}@*'.format(self.nick, self.ircUser)
+         
+   def irc_PART(self, prefix, params):
+      chan = params[0]
+      self.channel.users.remove(self.user)
+      self.sendToChannel(self.channel, 'PART', self.channel.name, ':') # parting msg usually is trailing
+   
+   def irc_QUIT(self, prefix, params):
+      pass
+   
+   def irc_MODE(self, prefix, params):
+      self.send_RPL_CHANNELMODEIS(self.channel)
          
    def irc_UTM(self, prefix, params):
       if params and params[-1].startswith('MAP'):
@@ -107,14 +137,26 @@ class Peerchat(IRC):
    def irc_SETCKEY(self, prefix, params):
       pass # TODO: analyze and implement
    
+   def irc_PRIVMSG(self, prefix, params):
+      # chan might be a comma separated list of users and/or channels
+      receivers, msg = params
+      for rcvr in receivers.split(','):
+         if rcvr.startswith('#'): # channel
+            # TODO? : support channel masks.
+            self.sendToChannel(db.Channel.objects.get(name=rcvr), 'PRIVMSG', rcvr, ':'+msg)
+         else: # user
+            pass # TODO
+   
    def send_RPL_NOTOPIC(self):
-         self.sendMessage('331', self.nick, self.channel.name, ':No topic is set', prefix='s')
+      self.sendMessage('331', self.nick, self.channel.name, ':No topic is set', prefix='s')
    def send_RPL_TOPIC(self, topic):
-         self.sendMessage('332', self.nick, self.channel.name, ':'+topic, prefix='s')
+      self.sendMessage('332', self.nick, self.channel.name, ':'+topic, prefix='s')
    def send_RPL_NAMEREPLY(self, names):
-         self.sendMessage('353', self.nick, '*', self.channel.name, ':'+' '.join(names), prefix='s')
+      self.sendMessage('353', self.nick, '*', self.channel.name, ':'+' '.join(['pseudoUser'] + [x.persona_set.get(selected=True).name for x in self.channel.users.all()]), prefix='s')
    def send_RPL_ENDOFNAMES(self):
-         self.sendMessage('366', self.nick, self.channel.name, ':End of NAMES list', prefix='s')
+      self.sendMessage('366', self.nick, self.channel.name, ':End of NAMES list', prefix='s')
+   def send_RPL_CHANNELMODEIS(self, channel):
+      self.sendMessage('324', self.nick, channel.name, channel.flags, prefix='s')
       
 
 class PeerchatFactory(ServerFactory):
@@ -125,7 +167,7 @@ class PeerchatFactory(ServerFactory):
       
    def buildProtocol(self, addr):
       inst = ServerFactory.buildProtocol(self, addr)
-      inst.cipherFactory = PeerchatCipherFactory(db.getGameKey(self.gameName))
+      inst.cipherFactory = PeerchatCipherFactory(db.Game.getKey(self.gameName))
       return inst
    
 #---------- PROXY CLASSES --------
@@ -188,6 +230,6 @@ class ProxyPeerchatServerFactory(ProxyFactory):
       
    def buildProtocol(self, addr):
       p = ProxyFactory.buildProtocol(self, addr)
-      p.gamekey = db.getGameKey(self.gameName)
+      p.gamekey = db.Game.getKey(self.gameName)
       return p
    

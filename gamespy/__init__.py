@@ -1,5 +1,12 @@
-import login
-import available
-import gpcm
-import peerchat
-import sake
+mods = [
+   'available',
+   'downloads',
+   'gpcm',
+   'login',
+   'master',
+   'peerchat',
+   'sake',
+]
+
+for m in mods:
+   exec 'import {0}'.format(m)

@@ -13,9 +13,9 @@ def getRa3():
    regKey = r'Software\Electronic Arts\Electronic Arts\Red Alert 3'
    regVal = 'Install Dir'
    path = RegQueryValueEx(RegOpenKey(HKEY_LOCAL_MACHINE, regKey), regVal)[0]
-   pat = r'ra3_(\d\.\d).game$'
+   pat = r'ra3_1.(\d+).game$'
    dataDir = os.path.join(path, 'Data')
-   return os.path.join(dataDir, 'ra3_{0}.game'.format(sorted([Decimal(re.match(pat, x).group(1)) for x in os.listdir(dataDir) if re.match(pat, x)])[-1]))
+   return os.path.join(dataDir, 'ra3_1.{0}.game'.format(sorted([Decimal(re.match(pat, x).group(1)) for x in os.listdir(dataDir) if re.match(pat, x)])[-1]))
 
 def getMercs2():
    regKey = r'Software\EA Games\Mercenaries 2 World in Flames'

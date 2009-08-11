@@ -1,60 +1,105 @@
 from django.db import models
 
-class User(models.Model):
-   login = models.CharField(max_length=32)
-   first_name = models.CharField(max_length=32, null=True)
-   last_name = models.CharField(max_length=32, null=True)
-   password = models.CharField(max_length=32)
-   created = models.DateField(auto_now_add=True)
-   last_login =  models.DateField(null=True)
+class Theater(models.Model) :
+    name = models.CharField(max_length=32)
 
-class Theater(models.Model):
-   name = models.CharField(max_length=32)
+    def __unicode__(self):
+        return u""
 
-class Session(models.Model):
-   user = models.ForeignKey(User, null=True)
-   theater = models.ForeignKey(Theater)
-   created = models.DateField(auto_now_add=True)
-   key = models.CharField(max_length=32)
-   int_ip = models.CharField(max_length=15)
-   int_port = models.IntegerField()
-   ext_ip = models.CharField(max_length=15)
-   ext_port = models.IntegerField()
-   
-class GameList(models.Model):
-   pass
+class User(models.Model) :
+    login = models.CharField(max_length=32)
+    firstName = models.CharField(max_length=32, blank=True )
+    lastName = models.CharField(max_length=32, blank=True )
+    password = models.CharField(max_length=32)
+    created = models.DateTimeField(auto_now_add=True)
+    lastLogin = models.DateTimeField(null=True)
+    email = models.CharField(max_length=32)
 
-class Game(models.Model):
-   host = models.ForeignKey(User)
-   created = models.DateField(auto_now_add=True)
-   list = models.ForeignKey(GameList)
-   ekey = models.CharField(max_length=32)
-   secret = models.CharField(max_length=256)
-   uid = models.CharField(max_length=256)
-   slots = models.IntegerField()
-   theater = models.ForeignKey(Theater)
-   info = models.CharField(max_length=2048, blank=True)
-   session = models.ForeignKey(Session)
+    def __unicode__(self):
+        return u""
 
-class Player(models.Model):
-   user = models.ForeignKey(User)
-   game = models.ForeignKey(Game)
+class LoginSession(models.Model) :
+    user = models.ForeignKey(User, null=True )
+    theater = models.ForeignKey(Theater)
+    created = models.DateTimeField(auto_now_add=True)
+    key = models.CharField(max_length=32)
+    intIp = models.CharField(max_length=15)
+    intPort = models.IntegerField()
+    extIp = models.CharField(max_length=15)
+    extPort = models.IntegerField()
 
-class EnterGameRequest(models.Model):
-   game = models.ForeignKey(Game)
-   slot = models.IntegerField()
-   session = models.ForeignKey(Session)
+    def __unicode__(self):
+        return u""
 
-   
-   
-# Gamespy stuff
-class GamespyGame(models.Model):
-   name = models.CharField(max_length=16)
-   key = models.CharField(max_length=6)
-   
-class Channel(models.Model):
-   name = models.CharField(max_length=32)
-   prettyName = models.CharField(max_length=32)
-   game = models.ForeignKey(GamespyGame)
-   flags = models.CharField(max_length=16, blank=True)
-   topic = models.CharField(max_length=32, null=True)
+class GameList(models.Model) :
+
+    def __unicode__(self):
+        return u""
+
+
+class GameSession(models.Model) :
+    host = models.ForeignKey(User)
+    created = models.DateTimeField()
+    list = models.ForeignKey(GameList)
+    ekey = models.CharField(max_length=32)
+    secret = models.CharField(max_length=256)
+    uid = models.CharField(max_length=256)
+    slots = models.IntegerField()
+    theater = models.ForeignKey(Theater)
+    info = models.CharField(max_length=2048, blank=True )
+    session = models.ForeignKey(LoginSession)
+
+    def __unicode__(self):
+        return u""
+
+
+class Game(models.Model) :
+    name = models.CharField(max_length=16)
+    key = models.CharField(max_length=6)
+
+    def __unicode__(self):
+        return u""
+
+
+class Player(models.Model) :
+    user = models.ForeignKey(User)
+    game = models.ForeignKey(GameSession)
+
+    def __unicode__(self):
+        return u""
+
+
+class EnterGameRequest(models.Model) :
+    game = models.ForeignKey(GameSession)
+    slot = models.IntegerField()
+    session = models.ForeignKey(LoginSession)
+
+    def __unicode__(self):
+        return u""
+
+
+class Channel(models.Model) :
+    name = models.CharField(max_length=32)
+    prettyName = models.CharField(max_length=32)
+    game = models.ForeignKey(Game)
+    flags = models.CharField(max_length=16, blank=True )
+    topic = models.CharField(max_length=256, null=True )
+    users = models.ManyToManyField(User)
+
+    def __unicode__(self):
+        return u""
+
+
+class Persona(models.Model) :
+    user = models.ForeignKey(User)
+    name = models.CharField(max_length=32)
+    selected = models.BooleanField()
+
+    def __unicode__(self):
+        return u""
+
+
+class CdKey(models.Model):
+    game = models.ForeignKey(Game)
+    user = models.ForeignKey(User)
+    cdKey = models.CharField(max_length=32)
