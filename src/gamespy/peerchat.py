@@ -132,7 +132,40 @@ class Peerchat(IRC):
       pass # TODO: analyze and implement
          
    def irc_GETCKEY(self, prefix, params):
-      pass # TODO: analyze and implement
+      chan, user, rId, zero, fields = params
+      fields  = fields.split('\\')[1:]
+      print fields
+      # 702 = RPL_GETCKEY? -- not part of RFC 1459
+      # TODO: query db for the requested fields and return, store them from SETCKEY
+      if fields[0] == 'username':
+         self.sendMessage('702', self.nick, chan, 'Keb', rId, ':\\{0}\\'.format(self.ircUser), prefix='s') # just return self
+         self.sendMessage('702', self.nick, chan, 'pseudoUser', rId, ':\\{0}\\'.format('*|*'), prefix='s')
+         self.sendMessage('703', self.nick, chan, rId, ':End of GETCKEY', prefix='s')
+      elif fields[0] == 'b_clanName':
+         self.sendMessage('702', self.nick, chan, 'Keb', rId, ':\\\\0\\0\\5\\3\\-1\\-1\\-1\\-1\\-1\\-1\\2', prefix='s')
+         self.sendMessage('702', self.nick, chan, 'pseudoUser', rId, ':\\\\0\\0\\5\\3\\-1\\-1\\-1\\-1\\-1\\-1\\2', prefix='s')
+         self.sendMessage('703', self.nick, chan, rId, ':End of GETCKEY', prefix='s')
+                       
+# client sends:
+#'GETCKEY #GPG!2170 * 028 0 :\\username\\b_flags' # request for all (*) users, request id 28, username and b_flags are requested fields
+#'SETCKEY #GPG!2170 Keb :\\b_clanName\\\\b_arenaTeamID\\0\\b_locale\\0\\b_wins\\0\\b_losses\\1\\b_rank1v1\\-1\\b_rank2v2\\-1\\b_clan1v1\\-1\\b_clan2v2\\-1\\b_elo1v1\\-1\\b_elo2v2\\-1\\b_onlineRank\\1'
+#'GETCKEY #GPG!2170 * 029 0 :\\b_clanName\\b_arenaTeamID\\b_locale\\b_wins\\b_losses\\b_rank1v1\\b_rank2v2\\b_clan1v1\\b_clan2v2\\b_elo1v1\\b_elo2v2\\b_onlineRank'
+   
+#':s 702 Keb #GPG!2170 Keb 028 :\\Xs1pfFWvpX|165580976\\'
+#':s 702 Keb #GPG!2170 WarlordSteve 028 :\\XlWG4vFs4X|219360647\\'
+#':s 702 Keb #GPG!2170 antoinec 028 :\\Xa4uWslfGX|175086932\\'
+#':s 702 Keb #GPG!2170 ChatMonitor-gs 028 :\\XaaaaaaaaX|25677635\\'
+#':s 703 Keb #GPG!2170 028 :End of GETCKEY\n'
+
+#':s 702 #GPG!2170 #GPG!2170 Keb BCAST :\\b_clanName\\\\b_arenaTeamID\\0\\b_locale\\0\\b_wins\\0\\b_losses\\1\\b_rank1v1\\-1\\b_rank2v2\\-1\\b_clan1v1\\-1\\b_clan2v2\\-1\\b_elo1v1\\-1\\b_elo2v2\\-1\\b_onlineRank\\1\n'
+#':s 702 Keb #GPG!2170 Keb 029 :\\\\0\\0\\0\\1\\-1\\-1\\-1\\-1\\-1\\-1\\1'
+#':s 702 Keb #GPG!2170 WarlordSteve 029 :\\\\0\\0\\5\\3\\-1\\-1\\-1\\-1\\-1\\-1\\2'
+#':s 702 Keb #GPG!2170 antoinec 029 :\\\\0\\0\\19\\44\\-1\\3603\\-1\\-1\\-1\\986\\8'
+#':s 702 Keb #GPG!2170 ChatMonitor-gs 029 :\\\\\\\\\\\\\\\\\\\\\\\\'
+#':s 703 Keb #GPG!2170 029 :End of GETCKEY\n'
+   
+   
+   
    
    def irc_SETCKEY(self, prefix, params):
       pass # TODO: analyze and implement
