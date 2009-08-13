@@ -7,10 +7,10 @@ import db
 
 class CipherFactory:
    def __init__(self, gameName):
-      self.gameName = gameName
+      self.gameKey = db.Game.objects.get(name=gameName).key
       
    def getMasterCipher(self, validate):
-      return EncTypeX(db.Game.objects.get(name=self.gameName).key, validate)
+      return EncTypeX(self.gameKey, validate)
    
 #SERVER:  \lc\2\sesskey\123456789\proof\0\id\1\final\
 #CLIENT:  \authp\\pid\87654321\resp\7fcb80a6255c183dc149fb80abcd4675\lid\0\final\
@@ -53,7 +53,6 @@ def getMsName(gamename):
 class EncTypeX:
    def __init__(self, key, validate=None):
       self.key = array('B', str(key))
-      self.encxkey = array('B', range(256) + [0]*5)
       self.start = 0
       
       # this is gathered from the first message to the server
@@ -88,44 +87,23 @@ class EncTypeX:
       return self.decrypt(data)
    
    def initDecoder(self, salt):
+      # init the IV
       self.salt = array('B', salt) # in case iv is a string
-      # a couple un-understood indexes used during init
-      self.n1 = self.n2 = 0
-      def func5(cnt):
-         if not cnt:
-            return 0
-         
-         mask = 0
-         while mask < cnt:
-            mask = (mask << 1) + 1
-      
-         i = 0
-         while True:
-            self.n1 = self.encxkey[self.n1 & 0xff] + self.iv[self.n2]
-            self.n2 += 1
-            if self.n2 >= len(self.iv):
-               self.n2 = 0
-               self.n1 += len(self.iv)
-            tmp = self.n1 & mask
-            i += 1
-            if i > 11:
-               tmp %= cnt
-            if tmp <= cnt:
-               break
-         return tmp
-      
       # mesh the gamekey, IV, and validate strings together
       # (formerly enctypex_funcx)
       self.iv = array('B', self.validate)
       for i in range(len(self.salt)):
          self.iv[(self.key[i % len(self.key)] * i) & 7] ^= self.iv[i & 7] ^ self.salt[i]
          
+      # init the pad
+      self.encxkey = array('B', range(256) + [0]*5)
+      self.n1 = self.n2 = 0 # a couple un-understood indexes used during init
       # formerly func4 hereafter
       if len(self.iv) < 1:
          return
       
       for i in reversed(range(256)):
-         t1 = func5(i)
+         t1 = self._func5(i)
          t2 = self.encxkey[i]
          self.encxkey[i] = self.encxkey[t1]
          self.encxkey[t1] = t2
@@ -136,6 +114,29 @@ class EncTypeX:
       self.encxkey[259] = self.encxkey[7]
       self.encxkey[260] = self.encxkey[self.n1 & 0xff]
    
+   def _func5(self, cnt):
+      if not cnt:
+         return 0
+      
+      mask = 0
+      while mask < cnt:
+         mask = (mask << 1) + 1
+   
+      i = 0
+      while True:
+         self.n1 = self.encxkey[self.n1 & 0xff] + self.iv[self.n2]
+         self.n2 += 1
+         if self.n2 >= len(self.iv):
+            self.n2 = 0
+            self.n1 += len(self.iv)
+         tmp = self.n1 & mask
+         i += 1
+         if i > 11:
+            tmp %= cnt
+         if tmp <= cnt:
+            break
+      return tmp
+      
    def encrypt(self, data):
       return self._crypt(data, True)
    
