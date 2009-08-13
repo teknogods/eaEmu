@@ -105,9 +105,10 @@ class Peerchat(IRC):
          if user == self.user: # exclude self
             if params[0] == 'PRIVMSG':
                continue
-         conn = self.factory.conns[user] # HACKy
-         # send them the message
-         conn.sendMessage(prefix=self.getClientPrefix(), *params)
+	 if user in self.factory.conns:
+	    conn = self.factory.conns[user] # HACKy
+	    # send them the message
+	    conn.sendMessage(prefix=self.getClientPrefix(), *params)
          
    def getClientPrefix(self):
       # follows RFC prefix BNF
