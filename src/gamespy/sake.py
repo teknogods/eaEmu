@@ -1,3 +1,5 @@
+import logging
+
 from twisted.web.server import Site
 from twisted.web.resource import Resource
 
