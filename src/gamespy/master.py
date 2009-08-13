@@ -208,7 +208,16 @@ class MasterServer(Protocol):
          ('roomType', 0),
       ))
       + struct.pack('B', len(nums)) + '\0'.join(nums) + '\0'
-      + ''.join('@{0}\xff{1}\x00\x03\x15\x03\x07\x02'.format(struct.pack('!L', c.id), c.prettyName) for c in channels) +
+      # end part of entry seems to be like this:
+      # name,null,  (0x1-3 or 0xff,asciinums,null), 0x15,
+      + ''.join('@{0}\xff{1}\x00'
+                '\xff98\x00'
+                '\x15'
+                '\xff36\x00'
+                '\x89\x02'
+                #'\x03\x15\x03\x07\x02'
+                .format(struct.pack('!L', c.id), c.prettyName) for c in channels) +
+      #'@\x00\x00\x08v\xffLobbyRoom:1\x00\xff98\x00\x15\xff36\x00\x89\x02' 
       # TODO: figure out what 5 unknown bytes (last is always 0x02) represent
       # -maybe chanflags, or fields that were queried(first line)?
       # also, how does the channel:number notation work??
