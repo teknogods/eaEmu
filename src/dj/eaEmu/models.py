@@ -34,32 +34,27 @@ class Theater(models.Model) :
         return u""
 
 
-class Channel(models.Model) :
-    name = models.CharField(max_length=32)
-    prettyName = models.CharField(max_length=32)
-    game = models.ForeignKey(Game)
-    flags = models.CharField(max_length=16, blank=True )
-    topic = models.CharField(max_length=256, null=True )
-    users = models.ManyToManyField(User)
+class Profile(models.Model) :
+    user = models.OneToOneField(User)
 
     def __unicode__(self):
         return u""
 
 
 class ClientKey(models.Model) :
-    b_flags = models.CharField(max_length=32)
-    b_clanName = models.CharField(max_length=64)
-    b_arenaTeamID = models.ForeignKey(ArenaTeam)
-    b_locale = models.IntegerField()
-    b_wins = models.IntegerField()
-    b_losses = models.IntegerField()
-    b_rank1v1 = models.IntegerField()
-    b_rank2v2 = models.IntegerField()
-    b_clan1v1 = models.IntegerField()
-    b_clan2v2 = models.IntegerField()
-    b_elo1v1 = models.IntegerField()
-    b_elo2v2 = models.IntegerField()
-    b_onlineRank = models.IntegerField()
+    b_flags = models.CharField(max_length=32, blank=True, default='' )
+    b_clanName = models.CharField(max_length=64, blank=True, default='' )
+    b_arenaTeamID = models.ForeignKey(ArenaTeam,default=0)
+    b_locale = models.IntegerField(default=0)
+    b_wins = models.IntegerField(default=0)
+    b_losses = models.IntegerField(default=0)
+    b_rank1v1 = models.IntegerField(default=-1)
+    b_rank2v2 = models.IntegerField(default=-1)
+    b_clan1v1 = models.IntegerField(default=-1)
+    b_clan2v2 = models.IntegerField(default=-1)
+    b_elo1v1 = models.IntegerField(default=-1)
+    b_elo2v2 = models.IntegerField(default=-1)
+    b_onlineRank = models.IntegerField(default=1)
 
     def __unicode__(self):
         return u""
@@ -72,7 +67,7 @@ class GameList(models.Model) :
 
 
 class LoginSession(models.Model) :
-    user = models.OneToOneField(User)
+    user = models.OneToOneField(User,null=True)
     theater = models.ForeignKey(Theater)
     created = models.DateTimeField(auto_now_add=True)
     key = models.CharField(max_length=32)
@@ -85,7 +80,10 @@ class LoginSession(models.Model) :
         return u""
 
 
-class Profile(models.Model) :
+class IrcUser(models.Model) :
+    profile = models.ForeignKey(Profile)
+    encIp = models.CharField(max_length=10)
+    clientKey = models.OneToOneField(ClientKey)
 
     def __unicode__(self):
         return u""
@@ -142,11 +140,13 @@ class Persona(models.Model) :
         return u""
 
 
-class IrcUser(models.Model) :
-    user = models.OneToOneField(User)
-    clientKey = models.OneToOneField(ClientKey)
-    profile = models.ForeignKey(Profile)
-    encIp = models.CharField(max_length=10)
+class Channel(models.Model) :
+    name = models.CharField(max_length=32)
+    prettyName = models.CharField(max_length=32)
+    game = models.ForeignKey(Game)
+    flags = models.CharField(max_length=16, blank=True )
+    topic = models.CharField(max_length=256, null=True )
+    ircUsers = models.ManyToManyField(IrcUser)
 
     def __unicode__(self):
         return u""

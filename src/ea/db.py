@@ -76,10 +76,11 @@ class User(models.User):
       #return [str(x.name) for x in Persona.objects.filter(user=self)]
       return [str(x.name) for x in self.persona_set.all()]
    
-   def getPersona(self):
-      'returns the active persona'
-      # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
-      return self.persona_set.get(selected=True)
+def getPersona(self):
+   'returns the active persona'
+   # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
+   return self.persona_set.get(selected=True)
+models.User.getPersona = getPersona
 
 class Persona(models.Persona):
    __metaclass__ = djProxy
@@ -103,6 +104,9 @@ class Session(models.LoginSession):
 
    def Login(self, user, pwd):
       self.user = User.GetUser(login=user)
+      # delete any stale sessions before saving
+      for e in Session.objects.filter(user=self.user):
+         e.delete()
       self.save()
       if pwd == self.user.password:
          return self.user
@@ -129,7 +133,16 @@ class Theater(models.Theater):
       Player.objects.create(user_id=session.user_id, game_id=game_id)
       
    def CreateSession(self, ip, port):
+      # prune old sessions in case they got left behind
+      # TODO: prune these more regularly and also when we get an exception+disconnect in a connection
+      existing = self.sessionClass.objects.filter(extIp=ip, extPort=port) # unlikely to be same port...
+      if existing:
+         for e in existing:
+            e.delete()
       return self.sessionClass.objects.create(theater=self, intIp=ip, intPort=port, extIp=ip, extPort=port)
+   
+   def DeleteSession(self, ip, port):
+      return self.sessionClass.objects.get(extIp=ip, extPort=port).delete()
 
    def ConnectionEstablished(self, key, user):
       self.sessionClass.objects.get(key=key).update(user=user)

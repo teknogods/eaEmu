@@ -342,6 +342,12 @@ class EaServer(Protocol):
       # subclasses should call the supermethod then reassign these
       self.hlrFactory = MessageHandlerFactory(self, 'EaMsgHlr')
       self.log = logging.getLogger('login.{0.host}:{0.port}'.format(ep))
+      
+   def connectionLost(self, *args):
+      ep = self.transport.getPeer()
+      self.session = self.theater.DeleteSession(ep.host, ep.port)
+      Protocol.connectionLost(self, *args)
+      
    
    def dataReceived(self, data):
       for msg in self.msgFactory.getMessages(data):
