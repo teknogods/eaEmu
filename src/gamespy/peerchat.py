@@ -42,7 +42,9 @@ class Peerchat(IRC):
    
    def irc_USER(self, prefix, params):
       #'XflsaqOa9X|165580976' is encodedIp|GSProfileId aka user, '127.0.0.1', 'peerchat.gamespy.com', 'a69b3a7a0837fdcd763fdeb0456e77cb' is cdkey
-      self.ircUser, ip, host, cdkey = params
+      user, ip, host, cdkey = params
+      encIp, profileId = user.split('|')
+      self.ircUser = IrcUser.objects.create(encIp=encIp, profile=profileId)
    
    def irc_NICK(self, prefix, params):
       # TODO: assert that this user has logged in to the main login server so that impersonation
@@ -83,7 +85,7 @@ class Peerchat(IRC):
             self.channel = rSet[0]
          else: # duplicate channels!!
             assert false
-      self.channel.users.add(self.user)
+      self.channel.users.add(self.user.ircuser)
       self.sendToChannel(self.channel, 'JOIN', ':'+self.channel.name) # notify everybody
       if chan.startswith('#GPG'):
          self.send_RPL_TOPIC('Click on the "Game Info" button at the top of your screen for '
@@ -102,7 +104,7 @@ class Peerchat(IRC):
       #TODO: this is probably a very inefficient way to do this...
       # grab all users that are in the given channel
       for user in channel.users.all():
-         if user == self.user: # exclude self
+         if user == self.ircUser: # exclude self
             if params[0] == 'PRIVMSG':
                continue
 	 if user in self.factory.conns:
@@ -111,12 +113,12 @@ class Peerchat(IRC):
 	    conn.sendMessage(prefix=self.getClientPrefix(), *params)
          
    def getClientPrefix(self):
-      # follows RFC prefix BNF
-      return '{0}!{1}@*'.format(self.nick, self.ircUser)
+      # follows RFC prefix BNF, but with encIp,gsProf
+      return '{0}!{1}|{2}@*'.format(self.nick, self.ircUser.encIp, self.ircUser.profile.id)
          
    def irc_PART(self, prefix, params):
       chan = params[0]
-      self.channel.users.remove(self.user)
+      self.channel.users.remove(self.ircUser)
       self.sendToChannel(self.channel, 'PART', self.channel.name, ':') # parting msg usually is trailing
    
    def irc_QUIT(self, prefix, params):
@@ -133,19 +135,26 @@ class Peerchat(IRC):
       pass # TODO: analyze and implement
          
    def irc_GETCKEY(self, prefix, params):
-      chan, user, rId, zero, fields = params
+      chan, nick, rId, zero, fields = params
       fields  = fields.split('\\')[1:]
-      print fields
+      if user == '*':
+	 users = self.channel.users.all()
+      else:
+	 users = IrcUser.objects.filter(user=Persona.objects.get(name=nick).user)
+      
+      for user in users:
+	 # TODO: add get_username getter to ClientKey, once properties are supported, to fetch the ircUser string
+	 #response = ''.join('\\{0}'.format(getattr(user.clientKey, x)) for x in fields) # only possible with getter-methods
+	 response = ':'
+	 nick = user.getPersona().name
+	 for f in fields:
+	    if f == 'username': 
+	       response += '\\{0}|{1}'.format(user.encIp, user.profile.id)
+	    else:
+	       response += '\\' + getattr(user.clientKey, f)
+         self.sendMessage('702', self.nick, chan, nick, rId, response, prefix='s')
+      self.sendMessage('703', self.nick, chan, rId, ':End of GETCKEY', prefix='s')
       # 702 = RPL_GETCKEY? -- not part of RFC 1459
-      # TODO: query db for the requested fields and return, store them from SETCKEY
-      if fields[0] == 'username':
-         self.sendMessage('702', self.nick, chan, 'Keb', rId, ':\\{0}\\'.format(self.ircUser), prefix='s') # just return self
-         self.sendMessage('702', self.nick, chan, 'pseudoUser', rId, ':\\{0}\\'.format('*|*'), prefix='s')
-         self.sendMessage('703', self.nick, chan, rId, ':End of GETCKEY', prefix='s')
-      elif fields[0] == 'b_clanName':
-         self.sendMessage('702', self.nick, chan, 'Keb', rId, ':\\\\0\\0\\5\\3\\-1\\-1\\-1\\-1\\-1\\-1\\2', prefix='s')
-         self.sendMessage('702', self.nick, chan, 'pseudoUser', rId, ':\\\\0\\0\\5\\3\\-1\\-1\\-1\\-1\\-1\\-1\\2', prefix='s')
-         self.sendMessage('703', self.nick, chan, rId, ':End of GETCKEY', prefix='s')
                        
 # client sends:
 #'GETCKEY #GPG!2170 * 028 0 :\\username\\b_flags' # request for all (*) users, request id 28, username and b_flags are requested fields
@@ -169,6 +178,7 @@ class Peerchat(IRC):
    
    
    def irc_SETCKEY(self, prefix, params):
+      # TODO: query db for the requested fields and return, store them from SETCKEY
       pass # TODO: analyze and implement
    
    def irc_PRIVMSG(self, prefix, params):
@@ -186,7 +196,7 @@ class Peerchat(IRC):
    def send_RPL_TOPIC(self, topic):
       self.sendMessage('332', self.nick, self.channel.name, ':'+topic, prefix='s')
    def send_RPL_NAMEREPLY(self, names):
-      self.sendMessage('353', self.nick, '*', self.channel.name, ':'+' '.join(['pseudoUser'] + [x.persona_set.get(selected=True).name for x in self.channel.users.all()]), prefix='s')
+      self.sendMessage('353', self.nick, '*', self.channel.name, ':'+' '.join(['pseudoUser'] + [x.user.persona_set.get(selected=True).name for x in self.channel.users.all()]), prefix='s')
    def send_RPL_ENDOFNAMES(self):
       self.sendMessage('366', self.nick, self.channel.name, ':End of NAMES list', prefix='s')
    def send_RPL_CHANNELMODEIS(self, channel):

@@ -75,6 +75,11 @@ class User(models.User):
    def getPersonas(self):
       #return [str(x.name) for x in Persona.objects.filter(user=self)]
       return [str(x.name) for x in self.persona_set.all()]
+   
+   def getPersona(self):
+      'returns the active persona'
+      # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
+      return self.persona_set.get(selected=True)
 
 class Persona(models.Persona):
    __metaclass__ = djProxy

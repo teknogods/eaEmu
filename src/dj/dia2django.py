@@ -10,7 +10,8 @@
 #  Python 2.4.4 (#2, Jul 17 2007, 11:56:54)
 #  [GCC 4.1.3 20070629 (prerelease) (Debian 4.1.2-13)] on linux2
 
-dependclasses=["User","Group" ,"Permission" , "Message"]
+#dependclasses=["User","Group" ,"Permission" , "Message"]
+dependclasses=[]
 
 import codecs
 import sys
@@ -50,7 +51,12 @@ def addparentstofks(rels,fks):
 def dia2django(archivo):
     f=codecs.open(archivo,"rb")
     #dia files are gzipped
-    data = gzip.GzipFile(fileobj=f).read()
+    try:
+        data = gzip.GzipFile(fileobj=f).read()
+    except:
+        # but sometimes not
+        f.seek(0)
+        data = f.read()
     ppal=parseString(data)
     #diagram -> layer -> object -> UML - Class -> name, (attribs : composite -> name,type)
     datos=ppal.getElementsByTagName("dia:diagram")[0].getElementsByTagName("dia:layer")[0].getElementsByTagName("dia:object")
@@ -94,8 +100,10 @@ def dia2django(archivo):
 
                                 #Mapping SQL types to Django
                                 varch=v2c.search(tc)
-                                if tc.replace(" ","").startswith("ManyToManyField(") :
-                                    myfor=tc.replace(" ","")[16:-1]
+                                if (tc.replace(" ","").startswith("ManyToManyField(")
+                                    or tc.replace(" ","").startswith("ForeignKey(")
+                                    or tc.replace(" ","").startswith("OneToOneField(")):
+                                    myfor=tc.replace(" ","").split('(')[1][:-1]
                                     if actclas==myfor:
                                         #In case of a recursive type, we use 'self'
                                         tc=tc.replace(myfor,"'self'")
@@ -112,19 +120,6 @@ def dia2django(archivo):
                                         tc="models.%s" % tc.replace(")",","+val+")")
                                     else :
                                         tc="models.%s(%s)" %(tc ,val)
-                                elif tc.replace(" ","").startswith("ForeignKey(") :
-                                    myfor=tc.replace(" ","")[11:-1]
-                                    if actclas==myfor:
-                                        #In case of a recursive type, we use 'self'
-                                        tc=tc.replace(myfor,"'self'")
-                                    elif clases[actclas][0].count(myfor)==0 :
-                                        #Adding foreign classes
-                                        if myfor not in dependclasses:
-                                            #In case we are using Auth classes
-                                            clases[actclas][0].append(myfor)
-                                    tc="models."+tc
-                                    if len(val)>0:
-                                        tc=tc.replace(")",","+val+")")
                                 elif varch==None :
                                     tc="models."+tsd[tc.strip().lower()]+"("+val+")"
                                 else :
