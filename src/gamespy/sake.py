@@ -4,8 +4,8 @@ from twisted.web.server import Site
 from twisted.web.resource import Resource
 
 # generate the classes with 'wsdl2py -wb http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx?WSDL'
-from StorageServer_server import *
-from StorageServer_server import StorageServer as StorageServerBase
+from soap.StorageServer_server import *
+from soap.StorageServer_server import StorageServer as StorageServerBase
 class StorageServer(StorageServerBase):
    def soap_SearchForRecords(self, ps, **kw):
       #TODO: write helpers that will covert dict+lists into these calls
