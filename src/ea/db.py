@@ -1,4 +1,5 @@
-#TODO: move me to ea.db
+from gamespy.cipher import *
+
 try:
    import dj.settings
    import django.conf
@@ -81,6 +82,12 @@ def getPersona(self):
    # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
    return self.persona_set.get(selected=True)
 models.User.getPersona = getPersona
+
+def getIrcUserString(self):
+   'returns the encoded ip and profile id of this user'
+   # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
+   return '{0}|{1}'.format(IpEncode.encode(self.loginsession.extIp), self.getPersona().id)
+models.User.getIrcUserString = getIrcUserString
 
 class Persona(models.Persona):
    __metaclass__ = djProxy

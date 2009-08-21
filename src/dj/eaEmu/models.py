@@ -1,8 +1,9 @@
 from django.db import models
 
 class Game(models.Model) :
-    name = models.CharField(max_length=16)
-    key = models.CharField(max_length=6)
+    name = models.CharField(max_length=16, unique=True )
+    key = models.CharField(max_length=6, null=True )
+    description = models.CharField(max_length=100, null=True )
 
     def __unicode__(self):
         return u""
@@ -21,12 +22,6 @@ class User(models.Model) :
         return u""
 
 
-class ArenaTeam(models.Model) :
-
-    def __unicode__(self):
-        return u""
-
-
 class Theater(models.Model) :
     name = models.CharField(max_length=32)
 
@@ -34,27 +29,45 @@ class Theater(models.Model) :
         return u""
 
 
-class Profile(models.Model) :
-    user = models.OneToOneField(User)
+class Channel(models.Model) :
+    name = models.CharField(max_length=32)
+    prettyName = models.CharField(max_length=32)
+    game = models.ForeignKey(Game)
+    flags = models.CharField(max_length=16, blank=True )
+    topic = models.CharField(max_length=256, null=True )
+    users = models.ManyToManyField(User)
 
     def __unicode__(self):
         return u""
 
 
-class ClientKey(models.Model) :
-    b_flags = models.CharField(max_length=32, blank=True, default='' )
-    b_clanName = models.CharField(max_length=64, blank=True, default='' )
-    b_arenaTeamID = models.ForeignKey(ArenaTeam,default=0)
-    b_locale = models.IntegerField(default=0)
-    b_wins = models.IntegerField(default=0)
-    b_losses = models.IntegerField(default=0)
-    b_rank1v1 = models.IntegerField(default=-1)
-    b_rank2v2 = models.IntegerField(default=-1)
-    b_clan1v1 = models.IntegerField(default=-1)
-    b_clan2v2 = models.IntegerField(default=-1)
-    b_elo1v1 = models.IntegerField(default=-1)
-    b_elo2v2 = models.IntegerField(default=-1)
-    b_onlineRank = models.IntegerField(default=1)
+class MasterGameSession(models.Model) :
+    channel = models.ForeignKey(Channel)
+    hostname = models.CharField(max_length=30)
+    gamemode = models.CharField(max_length=20)
+    mapname = models.CharField(max_length=200)
+    vCRC = models.CharField(max_length=50)
+    iCRC = models.CharField(max_length=50)
+    cCRC = models.CharField(max_length=50)
+    pw = models.CharField(max_length=50)
+    obs = models.CharField(max_length=50)
+    rules = models.CharField(max_length=50)
+    pings = models.CharField(max_length=50)
+    numRPlyr = models.CharField(max_length=50)
+    maxRPlyr = models.CharField(max_length=50)
+    numObs = models.CharField(max_length=50)
+    mID = models.CharField(max_length=50)
+    mod = models.CharField(max_length=50)
+    modv = models.CharField(max_length=50)
+    name = models.CharField(max_length=50)
+    teamAuto = models.CharField(max_length=50)
+    joinable = models.CharField(max_length=50)
+
+    def __unicode__(self):
+        return u""
+
+
+class ArenaTeam(models.Model) :
 
     def __unicode__(self):
         return u""
@@ -75,15 +88,6 @@ class LoginSession(models.Model) :
     intPort = models.IntegerField()
     extIp = models.CharField(max_length=15)
     extPort = models.IntegerField()
-
-    def __unicode__(self):
-        return u""
-
-
-class IrcUser(models.Model) :
-    profile = models.ForeignKey(Profile)
-    encIp = models.CharField(max_length=10)
-    clientKey = models.OneToOneField(ClientKey)
 
     def __unicode__(self):
         return u""
@@ -134,19 +138,29 @@ class Player(models.Model) :
 class Persona(models.Model) :
     user = models.ForeignKey(User)
     name = models.CharField(max_length=32)
-    selected = models.BooleanField()
+    selected = models.BooleanField(default=False)
+    friends = models.ManyToManyField('self')
 
     def __unicode__(self):
         return u""
 
 
-class Channel(models.Model) :
-    name = models.CharField(max_length=32)
-    prettyName = models.CharField(max_length=32)
+class Stats(models.Model) :
+    persona = models.OneToOneField(Persona)
     game = models.ForeignKey(Game)
-    flags = models.CharField(max_length=16, blank=True )
-    topic = models.CharField(max_length=256, null=True )
-    ircUsers = models.ManyToManyField(IrcUser)
+    b_flags = models.CharField(max_length=32, blank=True, default='' )
+    b_clanName = models.CharField(max_length=64, blank=True, default='' )
+    b_arenaTeamID = models.ForeignKey(ArenaTeam,default=0)
+    b_locale = models.IntegerField(default=0)
+    b_wins = models.IntegerField(default=0)
+    b_losses = models.IntegerField(default=0)
+    b_rank1v1 = models.IntegerField(default=-1)
+    b_rank2v2 = models.IntegerField(default=-1)
+    b_clan1v1 = models.IntegerField(default=-1)
+    b_clan2v2 = models.IntegerField(default=-1)
+    b_elo1v1 = models.IntegerField(default=-1)
+    b_elo2v2 = models.IntegerField(default=-1)
+    b_onlineRank = models.IntegerField(default=1)
 
     def __unicode__(self):
         return u""

@@ -1,6 +1,10 @@
 import md5
 import random
 import time
+import struct
+import base64
+
+from socket import inet_aton, inet_ntoa
 from array import array
 
 import db
@@ -11,6 +15,23 @@ class CipherFactory:
       
    def getMasterCipher(self, validate):
       return EncTypeX(self.gameKey, validate)
+   
+# adapted from aluigi's peerchat_ip.h
+class IpEncode:
+   cipher = 'aFl4uOD9sfWq1vGp'
+   @classmethod
+   def encode(cls, ip):
+      ip = struct.unpack('<L', inet_aton(ip))[0]
+      ip ^= 0xc3801dc7
+      return 'X{0}X'.format(''.join(cls.cipher[ip>>4*i&0xf] for i in reversed(range(8))))
+   
+   @classmethod
+   def decode(cls, encIp):
+      ip = 0
+      for i, x in enumerate(reversed(encIp[1:-1])):
+         ip |= cls.cipher.index(x) << 4*i
+      ip ^= 0xc3801dc7
+      return inet_ntoa(struct.pack('<L', ip))
    
 #SERVER:  \lc\2\sesskey\123456789\proof\0\id\1\final\
 #CLIENT:  \authp\\pid\87654321\resp\7fcb80a6255c183dc149fb80abcd4675\lid\0\final\
@@ -24,26 +45,56 @@ def gs_xor(data):
    xs = 'GameSpy3D'
    return ''.join(chr(ord(data[i])^ord(xs[i%len(xs)])) for i in range(len(data)))
 
-gsBase64 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]['
+def gslame(num):
+   c = (num >> 16) & 0xffff
+   a = num & 0xffff
+   c *= 0x41a7
+   a *= 0x41a7
+   a += ((c & 0x7fff) << 16)
+   a += (c >> 15)
+   if a >= 0x80000000: # if a<0 in C
+      #make it positive again
+      a &= 0x7fffffff
+      a += 1
+   return a
+
+# adapted from aluigi's code -- thanks!
+def passenc(data):
+   data = array('B', data)
+   num = struct.unpack('<L', 'gspy')[0]
+
+   for i in range(len(data)):
+      num = gslame(num)
+      data[i] ^= num % 0xff
+   return data.tostring()
+
+gsSpecial = {
+   '+' : '[',
+   '/' : ']',
+   '=' : '_',
+}
+eaSpecial = {
+   '+' : '_', # could be -?
+   '/' : '-', # could be _?
+   '=' : '.',
+}
+def gs64encode(data):
+   for k, v in gsSpecial.items():
+      data = data.replace(k, v)
+   # is all b64 encoded data encrypted like passwords?
+   return base64.b64encode(passenc(data))
+def gs64decode(data):
+   for k, v in gsSpecial.items():
+      data = data.replace(v, k)
+   return passenc(base64.b64decode(data))
+
+
 
 def gs_login_proof(pwd, usr, cChal, sChal):
-   def md5hex(data):
-      m = md5.new()
-      m.update(data)
-      return m.hexdigest()
+   md5hex = lambda x: md5.new(x).hexdigest()
+   print [repr(x) for x in (md5hex(pwd), ' '*48, usr, sChal, cChal, md5hex(pwd))]
    return md5hex(md5hex(pwd) + ' '*48 + usr + sChal + cChal + md5hex(pwd))
    
-def gs_rand_validate():
-   validate = ''
-   rnd = ~int(time.time())
-   for i in range(8):
-      while True:
-         rnd = ((rnd * 0x343FD) + 0x269EC3) & 0x7f
-         if rnd >= 0x21 and rnd < 0x7f:
-            break
-      validate += chr(rnd)
-   return ''.join(validate)
-
 def getMsName(gamename):
    num = 0
    for c in gamename.lower():
@@ -51,16 +102,22 @@ def getMsName(gamename):
    return '{0}.ms{1}.gamespy.com'.format(gamename, (num&0xffffffff)%20)
 
 class EncTypeX:
+   #'!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
+   alphabet = ''.join(chr(x) for x in range(0x21, 0x7f))
+   @staticmethod
+   def getRandValidate():
+      return ''.join(random.choice(alphabet) for _ in range(8))
+      
    def __init__(self, key, validate=None):
       self.key = array('B', str(key))
       self.start = 0
       
       # this is gathered from the first message to the server
       # and is generated randomly by the client.
-      validate = validate or gs_rand_validate()
+      validate = validate or EncTypeX.getRandValidate()
       self.validate = array('B', str(validate))
       
-      # IV is a random array of bytes of random length - unsure what bounds are
+      # IV is an array of random bytes of random length X to Y (unsure what x,y are)
       self.initDecoder(''.join(chr(random.getrandbits(8)) for _ in range(random.randint(9, 15))))
       
    def Decode(self, data):

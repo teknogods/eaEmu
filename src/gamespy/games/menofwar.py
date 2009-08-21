@@ -10,31 +10,12 @@ from fwdserver import *
 
 gameId = 'menofwarpc'
 
-class MowLoginServer(gamespy.LoginServer):
-   def cmd_login(self, msg):
-      # [('login', ''), ('challenge', 'Qf7C8OnFz4HS9iK0HgNiebY5wamfYCJb'), ('uniquenick', 'MyEnemyMyFriend'),
-      # ('partnerid', '0'), ('response', '15d07ddb2c74f03486391664a5cb5a13'), ('port', '6500'),
-      # ('productid', '2544'), ('gamename', 'menofwarpcd'), ('namespaceid', '1'), ('sdkrevision', '11'),
-      # ('quiet', '0'), ('id', '1')]
-      user =  msg.map['uniquenick']
-      pwd = 'pass'
-      self.sendMsg(GamespyMessage([('blk', '0'), ('list', '')]))
-      self.sendMsg(GamespyMessage([('bdy', '0'), ('list', '')]))
-      self.sendMsg(GamespyMessage([
-         ('lc', '2'),
-         ('sesskey', str(random.getrandbits(32))),
-         ('proof', gs_login_proof(pwd, user, msg.map['challenge'], self.sChal)),
-         ('userid', str(random.getrandbits(32))),
-         ('profileid', str(random.getrandbits(32))),
-         ('uniquenick', user),         ('lt', 'XdR2LlH69XYzk3KCPYDkTY__'),
-         ('id', '1')
-      ]))
-   
-   def cmd_registercdkey(self, msg):
+class MowLoginServer(gamespy.login.LoginServer):
+   def recv_registercdkey(self, msg):
       #[[('registercdkey', ''), ('sesskey', '14734748'), ('cdkeyenc', 'VcuyoQaIr[Q1Ij2oe5[VOJYkMA__'), ('id', '2')]]
       self.sendMsg(GamespyMessage([('rc', ''), ('id', '2')]))
    
-   def cmd_getprofile(self, msg):
+   def recv_getprofile(self, msg):
       #[[('getprofile', ''), ('sesskey', '14734748'), ('profileid', '37347566'), ('id', '3')]
       self.sendMsg(GamespyMessage([
          ('pi', ''),
