@@ -213,9 +213,9 @@ class RedAlert3Service(MultiService):
       MultiService.__init__(self)
       sCtx = OpenSSLContextFactoryFactory.getFactory('EA')
 
-      self.addService(UDPServer(27900, gamespy.available.AvailableServer()))
       self.addService(TCPServer(8001, gamespy.sake.SakeServer()))
       self.addService(TCPServer(8002, gamespy.downloads.DownloadsServerFactory()))
+      self.addService(UDPServer(27900, gamespy.master.SuperMaster()))
 
       address = ('cncra3-pc.fesl.ea.com', 18840)
       sFact = RedAlert3LoginFactory()
@@ -223,11 +223,12 @@ class RedAlert3Service(MultiService):
       self.addService(SSLServer(addresses[0][1], sFact, sCtx))
 
       address = ('peerchat.gamespy.com', 6667)
-      sFact = gamespy.peerchat.PeerchatFactory(gameId)
+      sFact = gamespy.peerchat.PeerchatFactory()
       #sFact = gamespy.peerchat.ProxyPeerchatServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))
 
-      address = ('207.38.11.14', 28910)
+      from gamespy.cipher import getMsName
+      address = (getMsName(gameId), 28910)
       sFact = MasterServerFactory()
       #sFact = gamespy.master.ProxyMasterServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))

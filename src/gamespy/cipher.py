@@ -12,10 +12,20 @@ import db
 class CipherFactory:
    def __init__(self, gameName):
       self.gameKey = db.Game.objects.get(name=gameName).key
-      
+
    def getMasterCipher(self, validate):
       return EncTypeX(self.gameKey, validate)
-   
+
+   def getHeartbeatCipher(self):
+      return HeartbeatCipher()
+
+class HeartbeatCipher:
+   alphabet = ''.join(chr(x) for x in range(0x21, 0x7f))
+   def __init__(self, salt=None):
+      if salt == None:
+         salt = ''.join(random.choice(self.alphabet) for _ in range(6))
+      self.salt = salt
+
 # adapted from aluigi's peerchat_ip.h
 class IpEncode:
    cipher = 'aFl4uOD9sfWq1vGp'
@@ -24,7 +34,7 @@ class IpEncode:
       ip = struct.unpack('<L', inet_aton(ip))[0]
       ip ^= 0xc3801dc7
       return 'X{0}X'.format(''.join(cls.cipher[ip>>4*i&0xf] for i in reversed(range(8))))
-   
+
    @classmethod
    def decode(cls, encIp):
       ip = 0
@@ -32,7 +42,16 @@ class IpEncode:
          ip |= cls.cipher.index(x) << 4*i
       ip ^= 0xc3801dc7
       return inet_ntoa(struct.pack('<L', ip))
-   
+
+   @classmethod
+   def d(cls, encIp):
+      ip = 0
+      for i, x in enumerate(reversed(encIp[1:-1])):
+         ip |= cls.cipher.index(x) << 4*i
+      ip ^= 0xc3801dc7
+      import socket
+      ip = socket.ntohl(ip)
+      return ip
 #SERVER:  \lc\2\sesskey\123456789\proof\0\id\1\final\
 #CLIENT:  \authp\\pid\87654321\resp\7fcb80a6255c183dc149fb80abcd4675\lid\0\final\
 #resp is the MD5 hash of "passwordDxtLwy}K"
@@ -40,7 +59,7 @@ class IpEncode:
 #DxtLwy}K is the result of gs_sesskey(123456789);
 def gs_sessionkey(sesskey):
    return ''.join(chr(ord(c)+0x11+i) for i, c in enumerate('{0:08x}'.format(sesskey^0x38f371e6)))
-      
+
 def gs_xor(data):
    xs = 'GameSpy3D'
    return ''.join(chr(ord(data[i])^ord(xs[i%len(xs)])) for i in range(len(data)))
@@ -94,7 +113,7 @@ def gs_login_proof(pwd, usr, cChal, sChal):
    md5hex = lambda x: md5.new(x).hexdigest()
    print [repr(x) for x in (md5hex(pwd), ' '*48, usr, sChal, cChal, md5hex(pwd))]
    return md5hex(md5hex(pwd) + ' '*48 + usr + sChal + cChal + md5hex(pwd))
-   
+
 def getMsName(gamename):
    num = 0
    for c in gamename.lower():
@@ -107,26 +126,26 @@ class EncTypeX:
    @staticmethod
    def getRandValidate():
       return ''.join(random.choice(alphabet) for _ in range(8))
-      
+
    def __init__(self, key, validate=None):
       self.key = array('B', str(key))
       self.start = 0
-      
+
       # this is gathered from the first message to the server
       # and is generated randomly by the client.
       validate = validate or EncTypeX.getRandValidate()
       self.validate = array('B', str(validate))
-      
+
       # IV is an array of random bytes of random length X to Y (unsure what x,y are)
       self.initDecoder(''.join(chr(random.getrandbits(8)) for _ in range(random.randint(9, 15))))
-      
+
    def Decode(self, data):
       '''
       This is just a convenience method for decoding server messages; it strips
       off the header and IV, then returns the decrypted payload.
       '''
       data = array('B', data)
-      
+
       # initialization takes place here, after the first msg
       # is received that contains some initialization data
       # that varies in length on each connect.
@@ -140,9 +159,9 @@ class EncTypeX:
          assert len(data) >= self.start
          self.initDecoder(data[hdrLen:][:ivLen])
          data = data[self.start:] #sometimes there is no extra data til next receive
-      
+
       return self.decrypt(data)
-   
+
    def initDecoder(self, salt):
       # init the IV
       self.salt = array('B', salt) # in case iv is a string
@@ -151,34 +170,34 @@ class EncTypeX:
       self.iv = array('B', self.validate)
       for i in range(len(self.salt)):
          self.iv[(self.key[i % len(self.key)] * i) & 7] ^= self.iv[i & 7] ^ self.salt[i]
-         
+
       # init the pad
       self.encxkey = array('B', range(256) + [0]*5)
       self.n1 = self.n2 = 0 # a couple un-understood indexes used during init
       # formerly func4 hereafter
       if len(self.iv) < 1:
          return
-      
+
       for i in reversed(range(256)):
          t1 = self._func5(i)
          t2 = self.encxkey[i]
          self.encxkey[i] = self.encxkey[t1]
          self.encxkey[t1] = t2
-   
+
       self.encxkey[256] = self.encxkey[1]
       self.encxkey[257] = self.encxkey[3]
       self.encxkey[258] = self.encxkey[5]
       self.encxkey[259] = self.encxkey[7]
       self.encxkey[260] = self.encxkey[self.n1 & 0xff]
-   
+
    def _func5(self, cnt):
       if not cnt:
          return 0
-      
+
       mask = 0
       while mask < cnt:
          mask = (mask << 1) + 1
-   
+
       i = 0
       while True:
          self.n1 = self.encxkey[self.n1 & 0xff] + self.iv[self.n2]
@@ -193,13 +212,13 @@ class EncTypeX:
          if tmp <= cnt:
             break
       return tmp
-      
+
    def encrypt(self, data):
       return self._crypt(data, True)
-   
+
    def decrypt(self, data):
       return self._crypt(data, False)
-   
+
    def _crypt(self, data, encrypt):
       data = array('B', data) # in case data is a string
       for i in range(len(data)):
@@ -262,12 +281,12 @@ class PeerchatCipherFactory:
       self.gamekey = gamekey
    def getCipher(self):
       return PeerchatCipher(PeerchatCipher.makeChallenge(), self.gamekey)
-   
+
 class PeerchatCipher:
    @staticmethod
    def makeChallenge():
       return ''.join(random.sample(r'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_|\<>[]{}=^@;?`', 16)) # TODO figure out this exact set
-   
+
    def __init__(self, challenge, gamekey):
       self.challenge = challenge
       self.pc1 = 0
@@ -286,7 +305,7 @@ class PeerchatCipher:
          tmp2 = self.table[tmp]
          self.table[tmp] = self.table[i]
          self.table[i] = tmp2
-         
+
    def crypt(self, data):
       outdata = array('B')
 

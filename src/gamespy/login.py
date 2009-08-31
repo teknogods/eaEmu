@@ -11,8 +11,8 @@ class LoginServer(Protocol):
       #self.session = self.theater.Connect()
 
    def makeChallenge(self):
-      #return ''.join(random.choice(string.ascii_uppercase) for _ in range(10))
-      return 'SCHALLENGE'
+      #return 'SCHALLENGE'
+      return ''.join(random.choice(string.ascii_uppercase) for _ in range(10))
 
    def dataReceived(self, data):
       try:

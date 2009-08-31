@@ -3,5 +3,6 @@ SEQUENCE = [
 'channame2',
 'ircacct',
 'prof',
+'msgs',
 ]
 

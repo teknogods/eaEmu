@@ -22,13 +22,6 @@ class User(models.Model) :
         return u""
 
 
-class Theater(models.Model) :
-    name = models.CharField(max_length=32)
-
-    def __unicode__(self):
-        return u""
-
-
 class Channel(models.Model) :
     name = models.CharField(max_length=32)
     prettyName = models.CharField(max_length=32)
@@ -41,27 +34,56 @@ class Channel(models.Model) :
         return u""
 
 
+class Theater(models.Model) :
+    name = models.CharField(max_length=32)
+
+    def __unicode__(self):
+        return u""
+
+
 class MasterGameSession(models.Model) :
     channel = models.ForeignKey(Channel)
-    hostname = models.CharField(max_length=30)
-    gamemode = models.CharField(max_length=20)
-    mapname = models.CharField(max_length=200)
-    vCRC = models.CharField(max_length=50)
-    iCRC = models.CharField(max_length=50)
-    cCRC = models.CharField(max_length=50)
-    pw = models.CharField(max_length=50)
-    obs = models.CharField(max_length=50)
-    rules = models.CharField(max_length=50)
-    pings = models.CharField(max_length=50)
-    numRPlyr = models.CharField(max_length=50)
-    maxRPlyr = models.CharField(max_length=50)
-    numObs = models.CharField(max_length=50)
-    mID = models.CharField(max_length=50)
-    mod = models.CharField(max_length=50)
-    modv = models.CharField(max_length=50)
-    name = models.CharField(max_length=50)
-    teamAuto = models.CharField(max_length=50)
-    joinable = models.CharField(max_length=50)
+    hostname = models.CharField(max_length=30, blank=True, default='' )
+    gamemode = models.CharField(max_length=20, blank=True, default='' )
+    mapname = models.CharField(max_length=200, blank=True, default='' )
+    vCRC = models.CharField(max_length=50, blank=True, default='' )
+    iCRC = models.CharField(max_length=50, blank=True, default='' )
+    cCRC = models.CharField(max_length=50, blank=True, default='' )
+    joinable = models.IntegerField(default=0)
+    localip0 = models.CharField(max_length=15, blank=True, default='0.0.0.0' )
+    localip1 = models.CharField(max_length=15, blank=True, default='0.0.0.0' )
+    localip2 = models.CharField(max_length=15, blank=True, default='0.0.0.0' )
+    localip3 = models.CharField(max_length=15, blank=True, default='0.0.0.0' )
+    localport = models.IntegerField(default=0)
+    obs = models.IntegerField(default=0)
+    numRPlyr = models.IntegerField(default=0)
+    numplayers = models.IntegerField(default=0)
+    maxRPlyr = models.IntegerField(default=0)
+    maxplayers = models.IntegerField(default=0)
+    numObs = models.IntegerField(default=0)
+    mID = models.CharField(max_length=50, default='#' )
+    mod = models.CharField(max_length=50, blank=True, default='' )
+    modv = models.CharField(max_length=50, blank=True, default='' )
+    name = models.CharField(max_length=50, default='#' )
+    pings = models.CharField(max_length=50, default='#' )
+    publicip = models.IntegerField(default=0)
+    publicport = models.IntegerField(default=0)
+    pw = models.IntegerField(default=0)
+    teamAuto = models.CharField(max_length=50, blank=True, default='' )
+    natneg = models.IntegerField(default=0)
+    statechanged = models.IntegerField(default=0)
+    rules = models.CharField(max_length=50, blank=True, default='' )
+
+    def __unicode__(self):
+        return u""
+
+
+class GameLobby(models.Model) :
+    channel = models.OneToOneField(Channel)
+    PN = models.CharField(max_length=200, null=True )
+    SL = models.CharField(max_length=500, null=True )
+    Pings = models.CharField(max_length=100, null=True )
+    PIDS = models.CharField(max_length=100, null=True )
 
     def __unicode__(self):
         return u""
