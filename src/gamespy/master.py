@@ -17,10 +17,13 @@ class MasterMsg(Enum):
    KEEPALIVE = 8
    AVAILABLE = 9
 
-class SuperMaster(DatagramProtocol):
+class HeartbeatMaster(DatagramProtocol):
    '''
    This fulfills the role of both redalert3pc.available.gamespy.com and redalert3pc.master.gamespy.com.
    Both of these real DNS addrs point to the same master.gamespy.com currently.
+
+   I think the two master servs are separate in order to save
+   bandwidth and CPU usage by running the heartbeat service as UDP. heartbeat packets can get dropped too.
    '''
    log = logging.getLogger('gamespy.superMaster')
 
@@ -116,7 +119,7 @@ def recvMasterSrv(self, data):
 
 
 # HACK, TODO: right now this depends on the factory having a gameName attr, see also Proxy verison above
-class MasterServer(Protocol):
+class QueryMaster(Protocol):
    def dataReceived(self, data):
       # first 8 are binary with some nulls, so have to skip those manually before splitting
       m = {}
@@ -157,6 +160,46 @@ class MasterServer(Protocol):
 
 
    def handle_getGames(self, msg):
+      '''
+      ## requests look like this:
+      ## msg tags
+      "\x00\xd9\x00\x01\x03\x00\x00\x01\x00redalert3pc\x00redalert3pc\x00f99.qM3$"
+      ## request
+      "(groupid=2167) AND (gamemode != 'closedplaying')\x00"
+      ## fieldlist
+      '\\hostname\\gamemode\\hostname\\mapname\\gamemode\\vCRC\\iCRC\\cCRC\\pw\\obs\\rules\\pings\\numRPlyr\\maxRPlyr\\numObs\\mID\\mod\\modv\\name_\x00'
+      '\x00\x00\x00\x04' # big endian 4? is this used as a continuation marker for next request?
+
+      ## TODO: handle this second query type as well as any others it might throw at
+      ## us in the request string and field list: "( blash = val) and (blah2 = val2)"
+      fields = (
+         ('hostname', 0),
+         ('mapname', 0),
+         ('numplayers', 1),
+         ('maxplayers', 1),
+         ('gamemode', 0),
+         ('vCRC', 0),
+         ('iCRC', 0),
+         ('pw', 1), # passworded?
+         ('obs', 1),
+         ('rules', 0),
+         ('pings', 0),
+         ('numRPlyr', 1),
+         ('maxRPlyr', 1),
+         ('numObs', 1),
+         ('name', 0),
+         ('cCRC', 0),
+         ('mID', 0),
+         ('mod', 0),
+         ('modv', 0),
+         ('teamAuto', 1),
+         ('joinable', 1),
+      )
+
+      data = '\x01' + self.makeFieldList(fields)
+      self.sendMsg(struct.pack('!H', len(data)) + data)
+
+      '''
       ## TODO: dynamically determine whether to use these and pick fields dynamically
       ## to do this, do select top 5 distinct col or something to find most frequent values among col
       immediateValueKeys = [
@@ -195,142 +238,37 @@ class MasterServer(Protocol):
          response += '\xff'*4
          self.sendMsg(response)
 
-   def _static_handle_getGames(self, msg):
-      ## request:
-      ## msg tags
-      "\x00\xd9\x00\x01\x03\x00\x00\x01\x00redalert3pc\x00redalert3pc\x00f99.qM3$"
-      ## request
-      "(groupid=2167) AND (gamemode != 'closedplaying')\x00"
-      ## fieldlist
-      '\\hostname\\gamemode\\hostname\\mapname\\gamemode\\vCRC\\iCRC\\cCRC\\pw\\obs\\rules\\pings\\numRPlyr\\maxRPlyr\\numObs\\mID\\mod\\modv\\name_\x00'
-      '\x00\x00\x00\x04' # big endian 4?
-
-      ## in here, 0 signifies the value is a reference, 1 means it is a literal byte
-      ## references can be replace with immediate values in the form of \xffa_string_you_want\x00
-      fields = (
-         ('hostname', 0),
-         ('gamemode', 0),
-         ('hostname', 0),
-         ('mapname', 0),
-         ('gamemode', 0),
-         ('vCRC', 0),
-         ('iCRC', 0),
-         ('cCRC', 0),
-         ('pw', 0),
-         ('obs', 0),
-         ('rules', 0),
-         ('pings', 0),
-         ('numRPlyr', 0),
-         ('maxRPlyr', 0),
-         ('numObs', 0),
-         ('mID', 0),
-         ('mod', 0),
-         ('modv', 0),
-         ('name_', 0),
-      )
-      ep = self.transport.getPeer()
-      self.sendMsg(
-      inet_aton(ep.host) + struct.pack('!H', ep.port)
-      + self.makeFieldList(fields) +
-      '\0' # val list goes here normally
-      #'~' #'c\xf3\xc1\\\x1a&' #'\xc0\xa8' #'\x00\xc2\x1a&E?\xf3\x1a'
-
-      '~' ## start of game entry
-      '\x18\xed\xc7\xa2\x19g'
-      '\xc0\xa8'
-      '\x01\x03\x19g\xd1\xa5\x80\x05'
-      '\xffpseudo FakeGame\x00' ## hostname
-      '\xffopenstaging\0' ## gamemode
-      '\xffpseudo FakeGame\x00' ## hostname
-      '\xffdata/maps/official/map_mp_3_feasel3/map_mp_3_feasel3.map\x00' ## mapname
-      '\xffopenstaging\0' ## gamemode
-      '\xff1.12.3444.25830\0' # vCRC
-      '\xff-117165505\0' # iCRC
-      '\xff251715600\0' # cCRC
-      '\xff5\0' # pw
-      '\xff6\0' # obs
-      '\xff3 100 10000 0 1 10 0 1 0 -1 0 -1 -1 1 \0' # rules
-      '\xff#\0' # pings
-      '\xff10\0' ## numRPlyr always(?) mirrors next byte - maybe one val is # open, one total #
-      '\xff10\0' ## maxRPlyr number of total slots for this game lobby
-      '\xff2\0' ## numObs zero-based index of next open slot (i.e., numplayers-1) -- maybe no index since middle slots can be closed
-      '\xff#\x00' # mID
-      '\xffRA3\0' # mod
-      '\xff0\x00' # modv
-      '\xff#\xff' # name_
-
-      '\x00' # extra null at end?
-      '\xff\xff\xff\xff' # msg terminator?
-      )
-
-      ## TODO: handle this second query type as well as any others it might throw at
-      ## us in the request string and field list: "( blash = val) and (blah2 = val2)"
-      fields = (
-         ('hostname', 0),
-         ('mapname', 0),
-         ('numplayers', 1),
-         ('maxplayers', 1),
-         ('gamemode', 0),
-         ('vCRC', 0),
-         ('iCRC', 0),
-         ('pw', 1), # passworded?
-         ('obs', 1),
-         ('rules', 0),
-         ('pings', 0),
-         ('numRPlyr', 1),
-         ('maxRPlyr', 1),
-         ('numObs', 1),
-         ('name', 0),
-         ('cCRC', 0),
-         ('mID', 0),
-         ('mod', 0),
-         ('modv', 0),
-         ('teamAuto', 1),
-         ('joinable', 1),
-      )
-
-      data = '\x01' + self.makeFieldList(fields)
-      self.sendMsg(struct.pack('!H', len(data)) + data)
-
-
-
    def handle_getRooms(self, msg):
       channels = db.Channel.objects.filter(game__name=self.factory.gameName, name__startswith='gpg')
+      ep = self.transport.getPeer()
       self.sendMsg(
-      '\x18\x07yO' '\x00\x00' #  FIXME ip, port
-      + self.makeFieldList((
-         ('hostname', 0),
-         ('numwaiting', 0),
-         ('maxwaiting', 0),
-         ('numservers', 0),
-         ('numplayers', 1),
-         ('roomType', 0),
-      )) +
-      '\0' ## TODO: strings array goes here
-      # end part of entry seems to be like this:
-      # name,null,  (0x1-3 or 0xff,asciinums,null), 0x15,
-      + ''.join(
-                ## TODO!!!!!!!
-                ## numwaiting < maxwaiting for client to be allowed to join?
-                ## numplayers plrs in numservers?
-                ## what's roomtype? always '1' in real list i think
-                '@{0}' # room id
-                '\xff{1}\x00' ##hostname (room name)
-                '\xff0\x00' ##numwaiting
-                '\xff100\x00' ## maxwaiting
-                '\xff0\x00' ## numservers
-                '\x00' ## numplayers
-                '\xff1\x00' ## roomtype
-                #'\x03\x15\x03\x07\x02'
-                .format(struct.pack('!L', c.id), c.prettyName) for c in channels) +
-      #'@\x00\x00\x08v\xffLobbyRoom:1\x00\xff98\x00\x15\xff36\x00\x89\x02'
-      # TODO:
-      # how does the channel:number notation work??
-      # what are values of roomtype enum
-      #'@\x00\x00\x08\x87\xffLobbyRoom:10\x00\x03\x15\x03\x07\x02'
-      #'@\x00\x00\t)\xffLobbyCoop:2\x00\x01\x15\x01\x00\x02'
-      #'@\x00\x00\t(\xffLobbyCoop:1\x00\x03\x15\x03\x03\x02'
-      #'@\x00\x00\t+\xffLobbyCoop:4\x00\x03\x15\x01\x00\x02'
-      #'@\x00\x00\t-\xffLobbyRussian:1\x00\x02\x15\x01\x00\x02'
-      '\x00\xff\xff\xff\xff'
+         inet_aton(ep.host)
+         + struct.pack('!H', ep.port) ## TODO: is this always 0 in real msgs?
+         + self.makeFieldList((
+            ('hostname', 0),
+            ('numwaiting', 0),
+            ('maxwaiting', 0),
+            ('numservers', 0),
+            ('numplayers', 1),
+            ('roomType', 0),
+         )) +
+         '\0' ## TODO: strings array goes here
+         # end part of entry seems to be like this:
+         # name,null,  (0x1-3 or 0xff,asciinums,null), 0x15,
+         + ''.join(
+                   ## TODO!!!!!!!
+                   ## numwaiting < maxwaiting for client to be allowed to join?
+                   ## numplayers plrs in numservers?
+                   ## what's roomtype? always '1' in real list i think
+                   ## how does the channel:number notation work?? -- maybe number is string ndx?
+                   '@{0}' # room id
+                   '\xff{1}\x00' ##hostname (room name)
+                   '\xff0\x00' ##numwaiting
+                   '\xff100\x00' ## maxwaiting
+                   '\xff0\x00' ## numservers
+                   '\x00' ## numplayers
+                   '\xff1\x00' ## roomtype
+                   #'\x03\x15\x03\x07\x02'
+                   .format(struct.pack('!L', c.id), c.prettyName) for c in channels) +
+         '\x00\xff\xff\xff\xff'
       )

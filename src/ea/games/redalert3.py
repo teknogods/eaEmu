@@ -195,9 +195,9 @@ class Ra3GsLoginServerFactory(ServerFactory):
       p.theater = Theater.getTheater(gameId)
       return p
 
-
-class MasterServerFactory(ServerFactory):
-   protocol = gamespy.master.MasterServer
+## TODO: should this really be game-specific?
+class QueryMasterFactory(ServerFactory):
+   protocol = gamespy.master.QueryMaster
    log = logging.getLogger('gamespy.ra3master')
    gameName = gameId
 
@@ -215,7 +215,7 @@ class RedAlert3Service(MultiService):
 
       self.addService(TCPServer(8001, gamespy.sake.SakeServer()))
       self.addService(TCPServer(8002, gamespy.downloads.DownloadsServerFactory()))
-      self.addService(UDPServer(27900, gamespy.master.SuperMaster()))
+      self.addService(UDPServer(27900, gamespy.master.HeartbeatMaster()))
 
       address = ('cncra3-pc.fesl.ea.com', 18840)
       sFact = RedAlert3LoginFactory()
@@ -229,7 +229,7 @@ class RedAlert3Service(MultiService):
 
       from gamespy.cipher import getMsName
       address = (getMsName(gameId), 28910)
-      sFact = MasterServerFactory()
+      sFact = QueryMasterFactory()
       #sFact = gamespy.master.ProxyMasterServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))
 
