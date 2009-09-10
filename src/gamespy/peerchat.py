@@ -2,7 +2,7 @@ from __future__ import print_function
 import logging
 
 from twisted.words.protocols import irc
-from twisted.words.protocols.irc import IRC # remove once done
+from twisted.words.protocols.irc import lowQuote
 from twisted.internet.protocol import ServerFactory
 from twisted.protocols.portforward import *
 from twisted.words.service import IRCUser, WordsRealm, IRCFactory, Group
@@ -12,9 +12,11 @@ from twisted.cred import credentials
 from zope.interface import implements
 from twisted.internet import defer, threads
 from twisted.words import iwords
+from twisted.python import failure
 
 import db
 from cipher import *
+import myAspects; aspects = myAspects
 
 '''
 2009-08-22 17:36:30,263 - gamespy.chatServ - received: 'JOIN #GSP!redalert3pc!Ma1a1D10cM \r\n'
@@ -64,12 +66,13 @@ GETCKEY #GSP!redalert3pc!Ma1a1D10cM * 030 0 :\\username\\b_flags\r\n'
 class Peerchat(IRCUser):
    def connectionMade(self):
       IRCUser.connectionMade(self)
-      self.doCrypt = False
       self.log  = logging.getLogger('gamespy.peerchat.{0.host}:{0.port}'.format(self.transport.getPeer()))
 
+      ## some HACKS for IRCUser compat
+      self.name = '*' ## need this since user hasn't logged in yet
+      self.password = '' ## FIXME, TODO: remove once auth process fixed
+
    def dataReceived(self, data):
-      if self.doCrypt:
-         data = self.cCipher.crypt(data)
       for line in data.split('\n'):
          line = line.strip('\r')
          if line:
@@ -79,24 +82,12 @@ class Peerchat(IRCUser):
    def sendLine(self, line):
       data = line + '\n' # peerchat doesn't send \r
       self.log.debug('send IRC: {0}'.format(repr(data)))
-      if self.doCrypt:
-         data = self.sCipher.crypt(data)
       ##don't use IRC.sendLine(self, line)! \r\n won't get encrypted!!
       self.transport.write(data)
 
    # TODO: enumerate GS cmd ids and use more meaningful names
    def irc_CRYPT(self, prefix, params):
-      # params are usually 'des', '1', 'redalertpc'
-      self.cipherFactory = PeerchatCipherFactory(db.Game.getKey(params[2]))
-      self.sCipher = self.cipherFactory.getCipher()
-      self.cCipher = self.cipherFactory.getCipher()
-
-      ## some HACKS for IRCUser compat
-      self.name = '*' ## need this since user hasn't logged in yet
-      self.password = '' ## FIXME, TODO: remove once auth process fixed
-
-      self.sendMessage('705', self.cCipher.challenge, self.sCipher.challenge)
-      self.doCrypt = True ## encrypt traffic henceforth
+      pass ## this will be handled by aspects, if at all
 
    def irc_USRIP(self, prefix, params):
       self.sendMessage('302', '', ':=+@{0}'.format(self.transport.getPeer().host), prefix='s')
@@ -158,7 +149,71 @@ class Peerchat(IRCUser):
          if val:
             self.sendMessage('UTM', self.channel.name, ':{0}/ {1}'.format(key, val), prefix=self.channel.users.all()[0]) ## HACK: assumes first in list is host
 
+   def receive(self, sender, recipient, message):
+      '''
+      This is an override of the regular receive that always assumes
+      it has been triggered by the PRIVMSG command. This one differs in that
+      it checks for  the 'command' key in the message dict for UTM etc. and sends
+      that command instead.
+      '''
+      if iwords.IGroup.providedBy(recipient):
+         recipientName = '#' + recipient.name
+      else:
+         recipientName = recipient.name
+
+      text = message.get('text', '<an unrepresentable message>')
+      for L in text.splitlines():
+         usrStr = '%s!%s@%s' % (sender.name, sender.name, self.hostname)
+         if 'command' in message:
+            self.sendLine(":{0} {1} {2} :{3}".format(usrStr, message['command'], recipientName, lowQuote(L)))
+         else:
+            self.privmsg(
+               usrStr,
+               recipientName,
+               L)
+
    def irc_UTM(self, prefix, params):
+      try:
+         targetName = params[0].decode(self.encoding)
+      except UnicodeDecodeError:
+         self.sendMessage(
+            irc.ERR_NOSUCHNICK, targetName,
+            ":No such nick/channel (could not decode your unicode!)")
+         return
+
+      if params[-1].startswith('KPA'):
+         return
+      if params[-1].startswith('NAT'):
+         return
+
+      messageText = params[-1]
+      if targetName.startswith('#'):
+         target = self.realm.lookupGroup(targetName[1:])
+      else:
+         target = self.realm.lookupUser(targetName).addCallback(lambda user: user.mind)
+
+      def cbTarget(targ):
+         if targ is not None:
+            return self.avatar.send(targ, {"text": messageText, 'command':'UTM'})
+
+      def ebTarget(err):
+         self.sendMessage(
+            irc.ERR_NOSUCHNICK, targetName,
+            ":No such nick/channel.")
+
+      target.addCallbacks(cbTarget, ebTarget)
+
+   def irc_WHO(self, prefix, params):
+      pass
+      ## TODO
+      '''
+      'WHO daghros\r\n'
+2009-08-23 18:50:03,828 - gamespy.masterCli - decoded: '\x00\xec\x02~G\xa8l\xbf\x19\xec\xc0\xa8\x01\x88\x19\xec@\xde\xa6mViciousPariah ViciousPariah-War Arena!\x00data/maps/internal/war_arena_v3.7_mando777/war_arena_v3.7_mando777.map\x00\x06\x06openstaging\x001.12.3444.25830\x00-117165505\x00\x00\x013 100 10000 0 1 10 0 1 0 -1 0 -1 -1 1 \x00\x00\x02\x04\x00\x00251715600\x00\x00RA3\x000\x00\x00\x00'
+2009-08-23 18:50:03,898 - gamespy.chatCli - received: ':s 352 Jackalus * XsfqlGFW9X|182446558 * s daghros H :0 cea8ff6a8da628bcff9249151b46f53d\n'
+'''
+
+
+   def _old_irc_UTM(self, prefix, params):
       chan = params[0]
       if not chan.startswith('#'):
          return ## TODO: REQ comamnds put username instead of chan
@@ -327,6 +382,8 @@ class DbGroup(db.Channel):
 
       if self.id not in DbGroup.clientMap:
          DbGroup.clientMap[self.id] = {}
+         if not hasattr(self, 'pk'): ## must do this check to avoid clearing unsaved instance
+            self.users.clear() ## clear only on first instantiation (i.e. startup)
       self.clients = DbGroup.clientMap[self.id] ## used to find Protocol+IChatClient objects by their dbUser.id
       ## self.users is in the db and contains dbUser
       ## these lists unfortunately have to be maintained separately :/
@@ -350,6 +407,8 @@ class DbGroup(db.Channel):
          self.clients[client.user.id] =  client
          ## notify other clients in this group
          for usr in self.users.exclude(id=client.user.id): ## better way to write this?
+            if usr.id not in self.clients:
+               continue ## this is need for clients that exit badly
             clt = self.clients[usr.id]
             d = defer.maybeDeferred(clt.userJoined, self, client.user)
             d.addErrback(self._ebUserCall, client=clt)
@@ -464,7 +523,6 @@ class PeerchatRealm(WordsRealm):
             grp = DbGroup.objects.get_or_create(name=name, prettyName=name, game=db.Game.objects.get(name=name.split('!')[1]))[0] ## TODO:better way to provide game?
          else:
             grp = DbGroup.objects.get(name=name)
-         db.GameLobby.objects.get_or_create(channel=grp) ## XXX: yuck
          return grp
 
       return threads.deferToThread(getGroup, name=name)
@@ -549,3 +607,35 @@ class ProxyPeerchatServerFactory(ProxyFactory):
       p.gamekey = db.Game.getKey(self.gameName)
       return p
 
+##TODO: make a generic logging aspect for all Protocol objects to capture receives and sends and log based on module name
+class PeerchatEncryption(object):
+   __metaclass__ = aspects.Aspect(Peerchat)
+
+   def connectionMade(self):
+      self.doCrypt = False
+      yield aspects.proceed
+
+   def dataReceived(self, data):
+      if self.doCrypt:
+         data = self.cCipher.crypt(data)
+      yield aspects.proceed(self, data)
+
+   def sendLine(self, line):
+      data = line + '\n' # peerchat doesn't send \r
+      if self.doCrypt:
+         data = self.sCipher.crypt(data)
+      self.log.debug('send IRC: {0}'.format(repr(data)))
+      ##don't use IRC.sendLine(self, line)! \r\n won't get encrypted!!
+      self.transport.write(data)
+      # dont continue to wrapped function, it'll try to append another newline
+      yield aspects.return_stop(None)
+
+   def irc_CRYPT(self, prefix, params):
+      # params are usually 'des', '1', 'redalertpc'
+      self.cipherFactory = PeerchatCipherFactory(db.Game.getKey(params[2]))
+      self.sCipher = self.cipherFactory.getCipher()
+      self.cCipher = self.cipherFactory.getCipher()
+
+      self.sendMessage('705', self.cCipher.challenge, self.sCipher.challenge)
+      self.doCrypt = True ## encrypt traffic henceforth
+      yield aspects.proceed

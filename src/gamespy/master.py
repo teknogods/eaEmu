@@ -12,10 +12,11 @@ from enum import Enum
 from cipher import CipherFactory
 
 class MasterMsg(Enum):
-   CHALLENGE_RESPONSE = 1
-   HEARTBEAT = 3
-   KEEPALIVE = 8
-   AVAILABLE = 9
+   CHALLENGE_RESPONSE = 0x01
+   HEARTBEAT          = 0x03
+   KEEPALIVE          = 0x08
+   AVAILABLE          = 0x09
+   RESPONSE_CORRECT   = 0x0A
 
 class HeartbeatMaster(DatagramProtocol):
    '''
@@ -25,10 +26,10 @@ class HeartbeatMaster(DatagramProtocol):
    I think the two master servs are separate in order to save
    bandwidth and CPU usage by running the heartbeat service as UDP. heartbeat packets can get dropped too.
    '''
-   log = logging.getLogger('gamespy.superMaster')
+   log = logging.getLogger('gamespy.heartbeatMaster')
 
    def datagramReceived(self, data, (host, port)):
-      msgId, clientId, body = ord(data[0]), data[1:][:4], data[5:]
+      msgId, clientId, body = ord(data[0]), struct.unpack('!L', data[1:][:4])[0], data[5:]
       if msgId == MasterMsg.AVAILABLE:
          # eg, '\x09\0\0\0\0redalert3pc\0':
          # same response for all games
@@ -45,27 +46,32 @@ class HeartbeatMaster(DatagramProtocol):
                remainder = '\0'.join(tokens[i:])
                break
 
-         self.log.debug('recv: {0}'.format(repr(data)))
-         self.log.debug('info: {0}'.format(repr(info)))
-         self.log.debug('rem: {0}'.format(repr(remainder)))
+         self.log.debug('{0}:{1} - info: {2}'.format(host, port, repr(info)))
+         self.log.debug('remainder: {0}'.format(repr(remainder)))
          if info['publicip'] == '0':
             cFact = CipherFactory(info['gamename'])
             chall = cFact.getHeartbeatCipher().salt
             self.sendMsg(
-               '\xfe\xfd\x01' + clientId + chall + base64.b16encode('\x00' + inet_aton(host) + struct.pack('!H',  port)) + '\0',
+               '\xfe\xfd' + chr(MasterMsg.CHALLENGE_RESPONSE) + struct.pack('!L', clientId) + chall + base64.b16encode('\x00' + inet_aton(host) + struct.pack('!H',  port)) + '\0',
                (host, port)
             )
-         ## TODO: better way to do this? i want to just do session.update(info)
-         session = db.MasterGameSession.objects.get_or_create(channel=db.Channel.objects.get(id=info['groupid']), hostname=info['hostname'])[0]
-         for k, v in info.iteritems():
-            setattr(session, k, v)
-         session.save()
-
+         ## sometimes, messages come with just ip update info and no groupid or hostname. I'm assuming the 4byte id is used to identify the session.
+         if 'groupid' not in info:
+            self.log.debug('weird msg from {0}:{1}'.format(host, port))
+         else:
+            try:
+               session = db.MasterGameSession.objects.get(clientId=clientId)
+            except db.MasterGameSession.DoesNotExist, ex:
+               session = db.MasterGameSession.objects.create(clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
+            ## TODO: better way to do this? i want to just do session.update(info)
+            for k, v in info.iteritems():
+               setattr(session, k, v)
+            session.save()
       elif msgId == MasterMsg.CHALLENGE_RESPONSE:
-         self.log.debug('recv: {0}'.format(repr(data)))
-         self.log.debug('TODO: chall resp')
+         self.log.debug('TODO: chall resp is always accepted, currently.')
+         ## send the acknowledgment
+         self.sendMsg('\xfe\xfd' + chr(MasterMsg.RESPONSE_CORRECT) + struct.pack('!L', clientId), (host, port))
       elif msgId == MasterMsg.KEEPALIVE:
-         self.log.debug('recv: {0}'.format(repr(data)))
          self.log.debug('TODO: keepalive')
       else:
          self.log.error('unhandled message: {0}'.format(repr(data)))
@@ -159,6 +165,8 @@ class QueryMaster(Protocol):
       return chr(len(fields)) + ''.join(chr(v)+k+'\0' for k, v in fields)
 
 
+   ## TODO: if this list is too long, client can't find the game it's looking for when invited
+   ##       Fix is to implement the continuation msgs like the real service does. Also, use string table for smaller msgs.
    def handle_getGames(self, msg):
       '''
       ## requests look like this:

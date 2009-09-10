@@ -22,6 +22,13 @@ class User(models.Model) :
         return u""
 
 
+class Theater(models.Model) :
+    name = models.CharField(max_length=32)
+
+    def __unicode__(self):
+        return u""
+
+
 class Channel(models.Model) :
     name = models.CharField(max_length=32)
     prettyName = models.CharField(max_length=32)
@@ -34,14 +41,8 @@ class Channel(models.Model) :
         return u""
 
 
-class Theater(models.Model) :
-    name = models.CharField(max_length=32)
-
-    def __unicode__(self):
-        return u""
-
-
 class MasterGameSession(models.Model) :
+    clientId = models.DecimalField(max_digits=10, decimal_places=0, unique=True)
     channel = models.ForeignKey(Channel)
     hostname = models.CharField(max_length=30, blank=True, default='' )
     gamemode = models.CharField(max_length=20, blank=True, default='' )
@@ -73,17 +74,6 @@ class MasterGameSession(models.Model) :
     natneg = models.IntegerField(default=0)
     statechanged = models.IntegerField(default=0)
     rules = models.CharField(max_length=50, blank=True, default='' )
-
-    def __unicode__(self):
-        return u""
-
-
-class GameLobby(models.Model) :
-    channel = models.OneToOneField(Channel)
-    PN = models.CharField(max_length=200, null=True )
-    SL = models.CharField(max_length=500, null=True )
-    Pings = models.CharField(max_length=100, null=True )
-    PIDS = models.CharField(max_length=100, null=True )
 
     def __unicode__(self):
         return u""

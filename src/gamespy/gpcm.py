@@ -63,19 +63,25 @@ class Comrade(LoginServer):
 
    def recv_pinvite(self, msg):
       ## \pinvite\\sesskey\18500069\profileid\165580977\productid\11419\location\1 959918388 0 PW: #HOST:Keb Keb #FROM:Keb #CHAN:#GSP!redalert3pc!MPlPcDD4PM\final\
-      tokens = msg.map['location'].split(' ')
+      loc = msg.map['location']
+      tokens = loc.split(' ')
       ## guesses on location tokens:
       ## chan id the inviter is in, hoster?, gamename?, fromwho, gamechan inviting to
-      #from = tokens[5]
       who = msg.map['profileid']
       ## HACK: race condition here too (if client disconnects as we're sending)
       #  \ka\\final\
-      persona = db.Persona.objects.get(id=who)
-      self.factory.conns[persona.user].sendMsg(MessageFactory.getMessage([
-         ('bm', 101),
-         ('f', persona.id),#165742653), ## f = from?
-         ('msg', '|p|11419|l|' + msg.map['location']),#13464880 0 PW: #HOST:kmart kmart #FROM:kmart #CHAN:#GSP!redalert3pc!MPzchKz9hM'),
-      ]))
+      try:
+         persona = db.Persona.objects.get(id=who)
+         ## TODO: RE all the other bm/10* status msgs. there are a lot, grep the logs
+         self.factory.conns[persona.user].sendMsg(MessageFactory.getMessage([
+            ('bm', 101),
+            ('f', persona.id), ## f = from?
+            ('msg', '|'.join(['', 'p', msg.map['productid'], 'l', ' '.join(tokens)])),
+         ]))
+      except db.Persona.DoesNotExist, ex: ## TODO, FIXME: sometimes (always firsttime for coop invite)I get weird ids, including the BE int of my old publicip?? where are these vals coming from
+         ## and what is the proper way to handle them??
+         print 'couldnt lookup profile id:', who
+         print 'heres full msg:', msg
 
 
 

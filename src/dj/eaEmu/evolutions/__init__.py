@@ -4,5 +4,6 @@ SEQUENCE = [
 'ircacct',
 'prof',
 'msgs',
+'master_clientid',
 ]
 
