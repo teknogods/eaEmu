@@ -136,8 +136,9 @@ class Peerchat(IRCUser):
       IRCUser.irc_JOIN(self, prefix, params)
 
    def getClientPrefix(self):
-      # follows RFC prefix BNF, but with encIp,gsProf
-      return '{0}!{1}@*'.format(self.nick, self.user.getIrcUserString())
+      ## follows RFC prefix BNF, but with encIp,gsProf
+      ## TODO: sometimes this has '*' in place of 2nd and 3rd parts of string
+      return '{0}!{1}@{2}'.format(self.user.getPersona().name, self.user.getIrcUserString(), self.hostname)
 
    def irc_PART(self, prefix, params):
       ## TODO: delete gamelobby once empty
@@ -149,12 +150,28 @@ class Peerchat(IRCUser):
          if val:
             self.sendMessage('UTM', self.channel.name, ':{0}/ {1}'.format(key, val), prefix=self.channel.users.all()[0]) ## HACK: assumes first in list is host
 
+   # IChatClient implementation
+   def userJoined(self, group, user):
+      self.join(
+         self.getClientPrefix(),
+         '#' + group.name)
+
+
+   def userLeft(self, group, user, reason=None):
+      assert reason is None or isinstance(reason, unicode)
+      self.part(
+         self.getClientPrefix(),
+         '#' + group.name,
+         (reason or u'').encode(self.encoding, 'replace'))
+
    def receive(self, sender, recipient, message):
       '''
       This is an override of the regular receive that always assumes
       it has been triggered by the PRIVMSG command. This one differs in that
       it checks for  the 'command' key in the message dict for UTM etc. and sends
       that command instead.
+
+      Remember that sender and recipient are IChatClients, so use .user to get DbUser
       '''
       if iwords.IGroup.providedBy(recipient):
          recipientName = '#' + recipient.name
@@ -162,15 +179,15 @@ class Peerchat(IRCUser):
          recipientName = recipient.name
 
       text = message.get('text', '<an unrepresentable message>')
-      for L in text.splitlines():
-         usrStr = '%s!%s@%s' % (sender.name, sender.name, self.hostname)
+      for line in text.splitlines():
          if 'command' in message:
-            self.sendLine(":{0} {1} {2} :{3}".format(usrStr, message['command'], recipientName, lowQuote(L)))
+            self.sendLine(":{0} {1} {2} :{3}".format(sender.getClientPrefix(), message['command'],
+                                                     recipientName, lowQuote(line)))
          else:
             self.privmsg(
-               usrStr,
+               sender.getClientPrefix(),
                recipientName,
-               L)
+               line)
 
    def irc_UTM(self, prefix, params):
       try:
@@ -181,10 +198,6 @@ class Peerchat(IRCUser):
             ":No such nick/channel (could not decode your unicode!)")
          return
 
-      if params[-1].startswith('KPA'):
-         return
-      if params[-1].startswith('NAT'):
-         return
 
       messageText = params[-1]
       if targetName.startswith('#'):
@@ -211,52 +224,6 @@ class Peerchat(IRCUser):
 2009-08-23 18:50:03,828 - gamespy.masterCli - decoded: '\x00\xec\x02~G\xa8l\xbf\x19\xec\xc0\xa8\x01\x88\x19\xec@\xde\xa6mViciousPariah ViciousPariah-War Arena!\x00data/maps/internal/war_arena_v3.7_mando777/war_arena_v3.7_mando777.map\x00\x06\x06openstaging\x001.12.3444.25830\x00-117165505\x00\x00\x013 100 10000 0 1 10 0 1 0 -1 0 -1 -1 1 \x00\x00\x02\x04\x00\x00251715600\x00\x00RA3\x000\x00\x00\x00'
 2009-08-23 18:50:03,898 - gamespy.chatCli - received: ':s 352 Jackalus * XsfqlGFW9X|182446558 * s daghros H :0 cea8ff6a8da628bcff9249151b46f53d\n'
 '''
-
-
-   def _old_irc_UTM(self, prefix, params):
-      chan = params[0]
-      if not chan.startswith('#'):
-         return ## TODO: REQ comamnds put username instead of chan
-      body = params[-1] ## should always be just 2 anyway
-      if body.startswith('MAP'):
-         self.sendMessage('UTM', self.nick, prefix=self.getClientPrefix())
-      else:
-         cmd, data = body.split('/ ', 1)
-         lobby = db.GameLobby.objects.get(channel__name=chan[1:])
-         if cmd == 'KPA': ## KeePAlive
-            #TODO: keepalive
-            pass
-         elif cmd == 'SL': ## Set Lobby info?
-            info = dict(pair.split('=', 1) for pair in data.split(';') if pair)
-            print(info['S'])
-            lobby.SL = body
-         elif cmd == 'PN': ## Player Name update
-            lobby.PN = body
-         elif cmd == 'Pings': ## player Pings update
-            lobby.Pings = body
-         elif cmd == 'PIDS': ## Player IDS update
-            lobby.PIDS = body
-         elif cmd == 'BCLR': ## ?? no args, no reply
-            pass
-         elif cmd == 'REQ': ## requests a color, position, etc.
-            pass # TODO: rebroadcast to all ppl in chan
-         else:
-            self.log.debug('unhandled UTM cmd: {0}'.format(cmd))
-            #UTM #GSP!redalert3pc!MPlPcDD4PM :SL/ M=283data/maps/official/map_mp_2_feasel4;
-            #MC=6CE347A5;
-            #MS=0;
-            #SD=1883891704;
-            #GSID=7F96;
-            #GT=-1;
-            #PC=-1;
-            #RU=3 100 10000 0 1 10 0 1 0 -1 0 -1 -1 1 ;
-            #S=H,1807794F,0,TT,-1,7,-1,-1,0,1,-1,:O:O:O:X:X:;
-            #'UTM #GSP!redalert3pc!MN11PzNN9M :PN/ 0=Jackalus\r\n'
-            #'UTM #GSP!redalert3pc!MN11PzNN9M :Pings/ ,0,0,0,0,0\r\n'
-            #'UTM #GSP!redalert3pc!MN11PzNN9M :PIDS/ 9de90b3, , , , , , , , , , , ,\r\n'
-            #'UTM #GSP!redalert3pc!MN11PzNN9M :KPA/ \r\n'
-         lobby.save()
-
 
    def irc_GETCKEY(self, prefix, params):
       chan, nick, rId, zero, fields = params
@@ -408,7 +375,7 @@ class DbGroup(db.Channel):
          ## notify other clients in this group
          for usr in self.users.exclude(id=client.user.id): ## better way to write this?
             if usr.id not in self.clients:
-               continue ## this is need for clients that exit badly
+               continue ## HACK: this is need for clients that exit badly
             clt = self.clients[usr.id]
             d = defer.maybeDeferred(clt.userJoined, self, client.user)
             d.addErrback(self._ebUserCall, client=clt)
@@ -423,6 +390,8 @@ class DbGroup(db.Channel):
          self.users.remove(client.user)
          removals = []
          for usr in self.users.exclude(id=client.user.id):
+            if usr.id not in self.clients:
+               continue ## HACK: this is need for clients that exit badly
             clt = self.clients[client.user.id]
             d = defer.maybeDeferred(clt.userLeft, self, client.user, reason)
             d.addErrback(self._ebUserCall, client=clt)
@@ -439,6 +408,8 @@ class DbGroup(db.Channel):
       assert recipient is self
       receives = []
       for usr in self.users.exclude(id=sender.user.id):
+         if usr.id not in self.clients:
+            continue ## HACK: this is need for clients that exit badly
          clt = self.clients[usr.id]
          d = defer.maybeDeferred(clt.receive, sender, self, message)
          d.addErrback(self._ebUserCall, client=clt)

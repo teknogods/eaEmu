@@ -60,9 +60,9 @@ class HeartbeatMaster(DatagramProtocol):
             self.log.debug('weird msg from {0}:{1}'.format(host, port))
          else:
             try:
-               session = db.MasterGameSession.objects.get(clientId=clientId)
+               session = db.MasterGameSession.objects.get(hostname=info['hostname'])
             except db.MasterGameSession.DoesNotExist, ex:
-               session = db.MasterGameSession.objects.create(clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
+               session = db.MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
             ## TODO: better way to do this? i want to just do session.update(info)
             for k, v in info.iteritems():
                setattr(session, k, v)
@@ -73,6 +73,7 @@ class HeartbeatMaster(DatagramProtocol):
          self.sendMsg('\xfe\xfd' + chr(MasterMsg.RESPONSE_CORRECT) + struct.pack('!L', clientId), (host, port))
       elif msgId == MasterMsg.KEEPALIVE:
          self.log.debug('TODO: keepalive')
+         assert len(data) == 5
       else:
          self.log.error('unhandled message: {0}'.format(repr(data)))
 
