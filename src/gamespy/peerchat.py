@@ -16,7 +16,7 @@ from twisted.python import failure
 
 import db
 from cipher import *
-import myAspects; aspects = myAspects
+import aspects2 as aspects
 
 '''
 2009-08-22 17:36:30,263 - gamespy.chatServ - received: 'JOIN #GSP!redalert3pc!Ma1a1D10cM \r\n'
