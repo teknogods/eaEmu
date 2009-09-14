@@ -8,6 +8,7 @@ from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.protocols.portforward import *
 
 import db
+import aspects2 as aspects
 from enum import Enum
 from cipher import CipherFactory
 
@@ -123,32 +124,28 @@ def recvMasterSrv(self, data):
    self.factory.log.debug('received: {0}'.format(data))
    ProxyServer.dataReceived(self, data)
 
+class QueryMasterMessage(dict):
+   @classmethod
+   def getMessage(cls, data):
+      m = cls()
+      (m['length'], m['headerRemainder']), data = struct.unpack('!H6s', data[:8]), data[9:] # 8, 9 skip the null in between
+      m['gameName'], m['gameName2'], data = data.split('\0', 2)
+      m['validate'], (m['request'], m['fields'], m['tail']) = data[:8], data[8:].lstrip('\0').split('\0', 2) # sometimes theres a preceding null, sometimes not?? :P
+      m['fields'] = m['fields'].split('\\')[1:]
+      return m
 
 # HACK, TODO: right now this depends on the factory having a gameName attr, see also Proxy verison above
 class QueryMaster(Protocol):
    def dataReceived(self, data):
       # first 8 are binary with some nulls, so have to skip those manually before splitting
-      m = {}
-      (m['length'], m['headerRemainder']), data = struct.unpack('!H6s', data[:8]), data[9:] # 8, 9 skip the null in between
-      m['gameName'], m['gameName2'], data = data.split('\0', 2)
-      m['validate'], (m['request'], m['fields'], m['tail']) = data[:8], data[8:].lstrip('\0').split('\0', 2) # sometimes theres a preceding null, sometimes not?? :P
-      m['fields'] = m['fields'].split('\\')[1:]
+      msg = QueryMasterMessage.getMessage(data)
       #self.factory.log.debug('received: {0}'.format(m))
-      self.factory.log.debug('received: request={0}'.format(m['request']))
-
-      # everytime a request comes in, re-init the cipher
-      self.cipher = CipherFactory(self.factory.gameName).getMasterCipher(m['validate'])
-      self.handleRequest(m)
+      self.factory.log.debug('received: request={0}'.format(msg['request']))
+      self.handleRequest(msg)
 
    def sendMsg(self, msg):
       self.factory.log.debug('sent: {0}'.format(repr(msg)))
-      data = ( # TODO: move me into another class
-         # first byte ^ 0xec is hdr content length, second ^ 0xea is salt length
-         struct.pack('!BxxB', 0xEC ^ 2, 0xEA ^ len(self.cipher.salt)) # 0 len hdr works too...
-         + self.cipher.salt.tostring()
-         + self.cipher.encrypt(msg)
-      )
-      self.transport.write(data)
+      self.transport.write(msg)
 
    def handleRequest(self, msg):
       # HACK, TODO: do this more intelligently
@@ -280,3 +277,24 @@ class QueryMaster(Protocol):
                    .format(struct.pack('!L', c.id), c.prettyName) for c in channels) +
          '\x00\xff\xff\xff\xff'
       )
+
+class QueryMasterEncryption(object):
+   __metaclass__ = aspect.Aspect(QueryMaster)
+
+   def connectionMade(self):
+      def writeWrap(data):
+         yield aspects.proceed(
+            # first byte ^ 0xec is hdr content length, second ^ 0xea is salt length
+            struct.pack('!BxxB', 0xEC ^ 2, 0xEA ^ len(self.cipher.salt)) # 0 len hdr works too...
+            + self.cipher.salt.tostring()
+            + self.cipher.encrypt(data)
+         )
+      aspects.with_wrap(self.transport.write, writeWrap)
+      yield aspects.proceed
+
+   def dataReceived(self, data):
+      yield aspects.proceed
+      # everytime a request comes in, re-init the cipher
+      msg = QueryMasterMessage.getMessage(data)
+      self.cipher = CipherFactory(self.factory.gameName).getMasterCipher(msg['validate'])
+

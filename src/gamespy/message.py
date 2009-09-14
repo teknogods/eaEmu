@@ -1,12 +1,31 @@
+class Mapping(type):
+   def __new__(self, name, bases, dikt):
+      klass = type.__new__(self, name, bases, dikt)
+      klass.__realDict__ = dikt.copy()
+      return klass
 
-class GamespyMessage:
-   def __init__(self, data):
-      self.data = data
-      self.map = dict(self.data)
+   def getattr(self, name):
+      if name in self.__realDict__:
+         return self.__realDict__[name]
+      else:
+         return self.__dict__[name]
+
+   def setattr(self, name, value):
+      if name.startswith('_') or name in self.__realDict__:
+         self.__realDict__[name] = value
+      else:
+         self.__dict__[name] = value
+
+class GamespyMessage(object):
+   __metaclass__ = Mapping
+
+   def __init__(self, pairs):
+      self._pairs = pairs
+      self.__dict__.update(dict(pairs))
    
    def __repr__(self):
       #return ''.join(['\\{0}\\{1}'.format(k, v) for k, v in self.data.iteritems()] + ['final\\'])
-      return ''.join(['\\{0}\\{1}'.format(k, v) for k, v in self.data] + ['\\final\\'])
+      return ''.join(['\\{0}\\{1}'.format(k, v) for k, v in self._pairs] + ['\\final\\'])
    
 class MessageFactory:
    @staticmethod
