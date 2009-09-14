@@ -135,22 +135,20 @@ class Peerchat(IRCUser):
       ## TODO: make sure everything is send just like in original peerchat impl
       IRCUser.irc_JOIN(self, prefix, params)
 
-   def getClientPrefix(self):
+   def getClientPrefix(self, short=False):
       ## follows RFC prefix BNF, but with encIp,gsProf
-      ## TODO: sometimes this has '*' in place of 2nd and 3rd parts of string
-      return '{0}!{1}@{2}'.format(self.user.getPersona().name, self.user.getIrcUserString(), self.hostname)
+      if short:
+         ## sometimes this has '*' in place of 2nd and 3rd parts of string
+         return '{0}!{1}@{2}'.format(self.user.getPersona().name, '*', '*')
+      else:
+         ## pretty sure part after '@' (hostname) is always '*'
+         return '{0}!{1}@{2}'.format(self.user.getPersona().name, self.user.getIrcUserString(), '*')
 
    def irc_PART(self, prefix, params):
       ## TODO: delete gamelobby once empty
       IRCUser.irc_PART(self, prefix, params)
 
-   def send_UTM(self):
-      for key in ('PN', 'SL', 'Pings', 'PIDS'):
-         val = getattr(self.channel.gamelobby, key)
-         if val:
-            self.sendMessage('UTM', self.channel.name, ':{0}/ {1}'.format(key, val), prefix=self.channel.users.all()[0]) ## HACK: assumes first in list is host
-
-   # IChatClient implementation
+   ## IChatClient implementation
    def userJoined(self, group, user):
       self.join(
          self.getClientPrefix(),
@@ -180,12 +178,17 @@ class Peerchat(IRCUser):
 
       text = message.get('text', '<an unrepresentable message>')
       for line in text.splitlines():
+         if 'prefix' in message:
+            prefix = message['prefix']
+         else:
+            prefix = sender.getClientPrefix()
          if 'command' in message:
-            self.sendLine(":{0} {1} {2} :{3}".format(sender.getClientPrefix(), message['command'],
+            self.sendLine(":{0} {1} {2} :{3}".format(prefix, message['command'],
                                                      recipientName, lowQuote(line)))
          else:
+            ## this is pretty much same as above but with PRIVMSG as command
             self.privmsg(
-               sender.getClientPrefix(),
+               prefix,
                recipientName,
                line)
 
@@ -198,7 +201,6 @@ class Peerchat(IRCUser):
             ":No such nick/channel (could not decode your unicode!)")
          return
 
-
       messageText = params[-1]
       if targetName.startswith('#'):
          target = self.realm.lookupGroup(targetName[1:])
@@ -207,7 +209,10 @@ class Peerchat(IRCUser):
 
       def cbTarget(targ):
          if targ is not None:
-            return self.avatar.send(targ, {"text": messageText, 'command':'UTM'})
+            msg = {'text':messageText, 'command':'UTM'}
+            if 'NAT' in 'messageText': ## a HACK that may be unnecessary
+               msg['prefix'] = self.getClientPrefix(short=True) ## send short prefix for NAT commands
+            return self.avatar.send(targ, msg)
 
       def ebTarget(err):
          self.sendMessage(
