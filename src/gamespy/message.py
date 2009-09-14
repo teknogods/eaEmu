@@ -22,11 +22,14 @@ class GamespyMessage(object):
    def __init__(self, pairs):
       self._pairs = pairs
       self.__dict__.update(dict(pairs))
-   
+
+   def __str__(self):
+      return str(self._pairs)
+
    def __repr__(self):
       #return ''.join(['\\{0}\\{1}'.format(k, v) for k, v in self.data.iteritems()] + ['final\\'])
       return ''.join(['\\{0}\\{1}'.format(k, v) for k, v in self._pairs] + ['\\final\\'])
-   
+
 class MessageFactory:
    @staticmethod
    def getMessages(data, xor=False):
@@ -37,8 +40,8 @@ class MessageFactory:
          tokens = msg.split('\\')[1:]
          msgs.append(GamespyMessage(zip(tokens[::2], tokens[1::2])))
       return msgs
-   
+
    @staticmethod
    def getMessage(*args):
       return GamespyMessage(*args)
-   
+

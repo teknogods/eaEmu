@@ -279,22 +279,22 @@ class QueryMaster(Protocol):
       )
 
 class QueryMasterEncryption(object):
-   __metaclass__ = aspect.Aspect(QueryMaster)
+   __metaclass__ = aspects.Aspect(QueryMaster)
 
    def connectionMade(self):
-      def writeWrap(data):
-         yield aspects.proceed(
+      yield aspects.proceed
+      def writeWrap(self_transport, data):
+         yield aspects.proceed(self_transport,
             # first byte ^ 0xec is hdr content length, second ^ 0xea is salt length
             struct.pack('!BxxB', 0xEC ^ 2, 0xEA ^ len(self.cipher.salt)) # 0 len hdr works too...
             + self.cipher.salt.tostring()
             + self.cipher.encrypt(data)
          )
-      aspects.with_wrap(self.transport.write, writeWrap)
-      yield aspects.proceed
+      aspects.with_wrap(writeWrap, self.transport.write)
 
    def dataReceived(self, data):
-      yield aspects.proceed
       # everytime a request comes in, re-init the cipher
       msg = QueryMasterMessage.getMessage(data)
       self.cipher = CipherFactory(self.factory.gameName).getMasterCipher(msg['validate'])
+      yield aspects.proceed
 

@@ -34,7 +34,7 @@ class Comrade(LoginServer):
       persona = user.getPersona()
 
       #persona = db.Persona(name='Jackalus', user=user)
-      #print ('proof', user.password, persona.name, msg.map['challenge'], self.sChal)
+      #print ('proof', user.password, persona.name, msg.challenge, self.sChal)
       blk = [] ## dunno what this is
       self.sendMsg(MessageFactory.getMessage([('blk', len(blk)), ('list', ','.join(blk))]))
 
@@ -49,7 +49,7 @@ class Comrade(LoginServer):
          ('lc', '2'),
          ('sesskey', sessKey),
          ## differs from regular gs login proof in that chall and ticket send to user are used instead of pwd, username
-         ('proof', cipher.gs_login_proof(user.loginsession.key, msg.map['authtoken'], msg.map['challenge'], self.sChal)),
+         ('proof', cipher.gs_login_proof(user.loginsession.key, msg.authtoken, msg.challenge, self.sChal)),
          ('userid', user.id),
          ('profileid', persona.id),
          ('uniquenick', persona.name),         ('lt', lt),
@@ -63,11 +63,11 @@ class Comrade(LoginServer):
 
    def recv_pinvite(self, msg):
       ## \pinvite\\sesskey\18500069\profileid\165580977\productid\11419\location\1 959918388 0 PW: #HOST:Keb Keb #FROM:Keb #CHAN:#GSP!redalert3pc!MPlPcDD4PM\final\
-      loc = msg.map['location']
+      loc = msg.location
       tokens = loc.split(' ')
       ## guesses on location tokens:
       ## chan id the inviter is in, hoster?, gamename?, fromwho, gamechan inviting to
-      who = msg.map['profileid']
+      who = msg.profileid
       ## HACK: race condition here too (if client disconnects as we're sending)
       #  \ka\\final\
       try:
@@ -76,7 +76,7 @@ class Comrade(LoginServer):
          self.factory.conns[persona.user].sendMsg(MessageFactory.getMessage([
             ('bm', 101),
             ('f', persona.id), ## f = from?
-            ('msg', '|'.join(['', 'p', msg.map['productid'], 'l', ' '.join(tokens)])),
+            ('msg', '|'.join(['', 'p', msg.productid, 'l', ' '.join(tokens)])),
          ]))
       except db.Persona.DoesNotExist, ex: ## TODO, FIXME: sometimes (always firsttime for coop invite)I get weird ids, including the BE int of my old publicip?? where are these vals coming from
          ## and what is the proper way to handle them??
