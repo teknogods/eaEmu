@@ -139,8 +139,11 @@ class Ra3MsgHlr_GameSpyPreAuth(MessageHandler):
          'challenge': chal,
          # this base64 string is incorrectly padded -- lacks 1 base64 character it seems.
          # this is the authToken that the client will send to gpcm.gamespy.com soon after this transaction completes.
-         # it may or may not be decodable or even meaningful to the client
-         'ticket':'CCUNTxOjYkDHJuDB9h0fw/skLy+s9DUCol1LFKmjk7Rc6/suwmWbFsKXbdZ1uZoEoQo7jHwlW7ZVw5FidVhdX8Yaw==',
+         # it may or may not be decodable by or meaningful to the client
+         #'ticket':'CCUNTxOjYkDHJuDB9h0fw/skLy+s9DUCol1LFKmjk7Rc6/suwmWbFsKXbdZ1uZoEoQo7jHwlW7ZVw5FidVhdX8Yaw==',
+         ## HACK, TODO: use login name instead of ticket so that gpcm knows who we are:
+         ## this is vulnerable to impersonation since we trust the gpcm login msg isnt spoofed
+         'ticket':self.server.session.user.login,
       })
       # TODO:ping once just for the hell of it
       #replies.append(self.messageClass('fsys', 0, {'TXN':'Ping'}))

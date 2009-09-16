@@ -80,10 +80,9 @@ class Peerchat(IRCUser):
       IRCUser.dataReceived(self, data)
 
    def sendLine(self, line):
-      data = line + '\n' # peerchat doesn't send \r
-      self.log.debug('send IRC: {0}'.format(repr(data)))
-      ##don't use IRC.sendLine(self, line)! \r\n won't get encrypted!!
-      self.transport.write(data)
+      self.log.debug('send IRC: {0}'.format(repr(line)))
+      ## peerchat doesn't send \r, as this does, but shouldn't matter
+      IRCUser.sendLine(self, line)
 
    # TODO: enumerate GS cmd ids and use more meaningful names
    def irc_CRYPT(self, prefix, params):
@@ -201,16 +200,17 @@ class Peerchat(IRCUser):
             ":No such nick/channel (could not decode your unicode!)")
          return
 
-      messageText = params[-1]
       if targetName.startswith('#'):
          target = self.realm.lookupGroup(targetName[1:])
       else:
          target = self.realm.lookupUser(targetName).addCallback(lambda user: user.mind)
 
+      messageText = params[-1]
+
       def cbTarget(targ):
          if targ is not None:
             msg = {'text':messageText, 'command':'UTM'}
-            if 'NAT' in 'messageText': ## a HACK that may be unnecessary
+            if 'NAT' in messageText: ## a HACK that may be unnecessary
                msg['prefix'] = self.getClientPrefix(short=True) ## send short prefix for NAT commands
             return self.avatar.send(targ, msg)
 
@@ -332,6 +332,13 @@ class PeerchatFactory(IRCFactory):
       IRCFactory.__init__(self, realm, PeerchatPortal(realm))
 
 
+## clear out static chans at startup
+## TODO: move or redesign this
+## maybe at DbGroup init build grp.users out of grp.clients?
+for chan in db.Channel.objects.all():
+   chan.users.clear()
+
+
 ## INTEGRAGTION TODO:
 ## follow naming, callback convention, db abstraction
 ## move all db stuff to DbGroup and DbUser
@@ -352,12 +359,17 @@ class DbGroup(db.Channel):
    def __init__(self, *args, **kw):
       db.Channel.__init__(self, *args, **kw)
 
+      #print('{0} id={1}, haspk={2}, pk={3}'.format(self.name, self.id, hasattr(self, 'pk'), self.pk if hasattr(self, 'pk') else 'N/A'))
+      ## FIXME: remove this HACK or at least find better way to check if a new chan
+      if self.id is None: ## is this channel newly created (eg, gamelobby GSP chan)
+         self.save() ## save so we can store clients in clientMap
+
       if self.id not in DbGroup.clientMap:
          DbGroup.clientMap[self.id] = {}
-         if not hasattr(self, 'pk'): ## must do this check to avoid clearing unsaved instance
-            self.users.clear() ## clear only on first instantiation (i.e. startup)
       self.clients = DbGroup.clientMap[self.id] ## used to find Protocol+IChatClient objects by their dbUser.id
-      ## self.users is in the db and contains dbUser
+
+      ## self.users is in the db and contains DbUser objects
+      ## self.clients is a map from user.id to IRCUser instance
       ## these lists unfortunately have to be maintained separately :/
       ## TODO: handle this tracking better
 
@@ -368,25 +380,30 @@ class DbGroup(db.Channel):
    def _cbUserCall(self, results):
       for (success, result) in results:
          if not success:
-            clientuser, err = result.value # XXX
+            clientuser, err = result.value # XXX <-- (not by elitak)
             self.remove(clientuser, err.getErrorMessage())
 
    def add(self, client):
+      #print('userlist in db is currently {0}'.format([u.login for u in self.users.all()]))
+      #print('userlist in mem is currently {0}'.format(self.clients.keys()))
+      #print('adding {0} to {1}'.format(client.user.login, self.name))
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
       if client.user not in self.users.all():
          additions = []
          self.users.add(client.user)
-         self.clients[client.user.id] =  client
+         self.clients[client.user.id] = client
          ## notify other clients in this group
          for usr in self.users.exclude(id=client.user.id): ## better way to write this?
             if usr.id not in self.clients:
-               continue ## HACK: this is need for clients that exit badly
+               continue ## HACK: this skips clients that exit badly
             clt = self.clients[usr.id]
             d = defer.maybeDeferred(clt.userJoined, self, client.user)
             d.addErrback(self._ebUserCall, client=clt)
             additions.append(d)
          ## callbacks for Deferreds in a DeferredList are fired only once all have completed
          defer.DeferredList(additions).addCallback(self._cbUserCall)
+      #print('userlist in db is now {0}'.format([u.login for u in self.users.all()]))
+      #print('userlist in mem is now {0}'.format(self.clients.keys()))
       return defer.succeed(None)
 
    def remove(self, client, reason=None):
@@ -412,6 +429,8 @@ class DbGroup(db.Channel):
    def receive(self, sender, recipient, message):
       assert recipient is self
       receives = []
+      #print('users receiving: {0} message: {1}'.format([u.login for u in self.users.exclude(id=sender.user.id)], message))
+      #print('users in my map: {0} message: {1}'.format([c.user.login for c in self.clients.values()], message))
       for usr in self.users.exclude(id=sender.user.id):
          if usr.id not in self.clients:
             continue ## HACK: this is need for clients that exit badly
@@ -428,8 +447,8 @@ class DbUser(db.User):
    implements(iwords.IUser)
 
    # FIXME: these are not preserved in db
-   realm = None
-   mind = None
+   realm = None # realm handles logins
+   mind = None # 'mind' is really the IRCUser instance or 'client'
 
    class Meta:
       proxy = True
@@ -590,21 +609,16 @@ class PeerchatEncryption(object):
    def connectionMade(self):
       self.doCrypt = False
       yield aspects.proceed
+      def writeWrap(self_transport, data):
+         if self.doCrypt:
+            data = self.sCipher.crypt(data)
+         yield aspects.proceed(self_transport, data)
+      aspects.with_wrap(writeWrap, self.transport.write)
 
    def dataReceived(self, data):
       if self.doCrypt:
          data = self.cCipher.crypt(data)
       yield aspects.proceed(self, data)
-
-   def sendLine(self, line):
-      data = line + '\n' # peerchat doesn't send \r
-      if self.doCrypt:
-         data = self.sCipher.crypt(data)
-      self.log.debug('send IRC: {0}'.format(repr(data)))
-      ##don't use IRC.sendLine(self, line)! \r\n won't get encrypted!!
-      self.transport.write(data)
-      # dont continue to wrapped function, it'll try to append another newline
-      yield aspects.return_stop(None)
 
    def irc_CRYPT(self, prefix, params):
       # params are usually 'des', '1', 'redalertpc'

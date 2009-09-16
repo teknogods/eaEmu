@@ -2366,13 +2366,13 @@
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O11">
       <dia:attribute name="obj_pos">
-        <dia:point val="31.95,16.23"/>
+        <dia:point val="32.75,16.08"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="31.9,16.18;51.365,30.88"/>
+        <dia:rectangle val="32.7,16.03;52.165,30.73"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="31.95,16.23"/>
+        <dia:point val="32.75,16.08"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
         <dia:real val="19.364999999999998"/>
@@ -2999,17 +2999,17 @@
         <dia:boolean val="false"/>
       </dia:attribute>
       <dia:attribute name="obj_pos">
-        <dia:point val="51.315,21.33"/>
+        <dia:point val="52.115,21.18"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="50.565,12.93;54.1725,22.13"/>
+        <dia:rectangle val="51.365,12.93;54.1725,21.98"/>
       </dia:attribute>
       <dia:attribute name="meta">
         <dia:composite type="dict"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
-        <dia:point val="51.315,21.33"/>
-        <dia:point val="54.0725,21.33"/>
+        <dia:point val="52.115,21.18"/>
+        <dia:point val="54.0725,21.18"/>
         <dia:point val="54.0725,13.73"/>
         <dia:point val="53.0725,13.73"/>
       </dia:attribute>
@@ -3034,13 +3034,13 @@
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O14">
       <dia:attribute name="obj_pos">
-        <dia:point val="58.655,4.25022"/>
+        <dia:point val="58.455,3.15022"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="58.605,4.20022;86.155,31.9002"/>
+        <dia:rectangle val="58.405,3.10022;85.955,30.8002"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="58.655,4.25022"/>
+        <dia:point val="58.455,3.15022"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
         <dia:real val="27.449999999999999"/>
@@ -3348,10 +3348,10 @@
             <dia:string>#localip0#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
-            <dia:string>#varchar(15)#</dia:string>
+            <dia:string>#IPAddressField#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True, default='0.0.0.0'#</dia:string>
+            <dia:string>#default='0.0.0.0'#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3371,10 +3371,10 @@
             <dia:string>#localip1#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
-            <dia:string>#varchar(15)#</dia:string>
+            <dia:string>#IPAddressField#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True, default='0.0.0.0'#</dia:string>
+            <dia:string>#default='0.0.0.0'#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3394,10 +3394,10 @@
             <dia:string>#localip2#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
-            <dia:string>#varchar(15)#</dia:string>
+            <dia:string>#IPAddressField#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True, default='0.0.0.0'#</dia:string>
+            <dia:string>#default='0.0.0.0'#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3417,10 +3417,10 @@
             <dia:string>#localip3#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
-            <dia:string>#varchar(15)#</dia:string>
+            <dia:string>#IPAddressField#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True, default='0.0.0.0'#</dia:string>
+            <dia:string>#default='0.0.0.0'#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3716,10 +3716,10 @@
             <dia:string>#publicip#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
-            <dia:string>#int#</dia:string>
+            <dia:string>#IPAddressField#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#default=0#</dia:string>
+            <dia:string>#default='0.0.0.0'#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>

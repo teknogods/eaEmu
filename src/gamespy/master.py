@@ -49,7 +49,7 @@ class HeartbeatMaster(DatagramProtocol):
 
          self.log.debug('{0}:{1} - info: {2}'.format(host, port, repr(info)))
          self.log.debug('remainder: {0}'.format(repr(remainder)))
-         if info['publicip'] == '0':
+         if info['publicip'] == '0': # first heartbeat has no public ip because it needs it from us
             cFact = CipherFactory(info['gamename'])
             chall = cFact.getHeartbeatCipher().salt
             self.sendMsg(
@@ -66,6 +66,8 @@ class HeartbeatMaster(DatagramProtocol):
                session = db.MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
             ## TODO: better way to do this? i want to just do session.update(info)
             for k, v in info.iteritems():
+               if k == 'publicip': ## this comes as BE int string
+                  v = inet_ntoa(struct.pack('<L', int(v))) ## assume the client behaved badly and took a BE int and read it as LE
                setattr(session, k, v)
             session.save()
       elif msgId == MasterMsg.CHALLENGE_RESPONSE:
@@ -228,13 +230,16 @@ class QueryMaster(Protocol):
                ## game channel name is based off of some or all of this info!
                ## TODO: RE that hash
 
-               + struct.pack('L', session.publicip) ## publicip is already a big endian long, so pack in host order
+               #+ struct.pack('L', session.publicip) ## publicip is already a big endian long, so pack in host order
+               + inet_aton(session.publicip)
                + struct.pack('!H', session.publicport)
                ## FIXME?: local host and port determine the channel hash. is there always an ip3? pick highest if there isnt??
                ## this may depend on what the master knows about the client's internal addresses -- it provides  the first that matches?
-               + inet_aton(session.localip1)
+               ## NO - the addr provided to clients must be the same as the one chosen by the host when it first joins the channel
+               + inet_aton(session.localip0) #1 works for on same LAN??
                + struct.pack('!H', session.localport)
-               + struct.pack('L', session.publicip) ##  some other related external ip -- sometimes dupe of external
+               #+ struct.pack('L', session.publicip) ##  some other related external ip -- sometimes dupe of external
+               + inet_aton(session.publicip) ##  some other related external ip -- sometimes dupe of external
              )
             #response += '~\x18\xed\xc7\xa2\x19g\xc0\xa8\x01\x03\x19g\xd1\xa5\x80\x05' #TODO
             #response += '~c\xf3\xc1\\\x1a&\xc0\xa8\x00\xc2\x1a&E?\xf3\x1a'

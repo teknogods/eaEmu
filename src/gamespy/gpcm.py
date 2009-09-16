@@ -27,10 +27,9 @@ class Comrade(LoginServer):
       # \id\1
       # \final\
 
-      # TODO: extract info from authtoken, once i can decode it
-      # for now, find user by ip
-
-      self.user = user = db.LoginSession.objects.get(extIp=self.transport.getPeer().host).user # HACK
+      #HACK,  TODO: extract info from real authtoken, once i can decode it
+      # for now, find by looking at pseudo-authToken
+      self.user = user = db.User.objects.get(login=msg.authtoken)
       persona = user.getPersona()
 
       #persona = db.Persona(name='Jackalus', user=user)
