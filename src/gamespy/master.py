@@ -226,6 +226,10 @@ class QueryMaster(Protocol):
       if match:
          groupId = match.group(1)
          for session in db.MasterGameSession.objects.filter(channel__id=groupId):
+            for ndx in range(4):
+               localIp = getattr(session, 'localip{0}'.format(ndx))
+               if localIp.startswith('192'):
+                  break
             response += ('~'
                ## game channel name is based off of some or all of this info!
                ## TODO: RE that hash
@@ -236,7 +240,8 @@ class QueryMaster(Protocol):
                ## FIXME?: local host and port determine the channel hash. is there always an ip3? pick highest if there isnt??
                ## this may depend on what the master knows about the client's internal addresses -- it provides  the first that matches?
                ## NO - the addr provided to clients must be the same as the one chosen by the host when it first joins the channel
-               + inet_aton(session.localip0) #1 works for on same LAN??
+               ## i think it might be the first class C address in list of local ips?
+               + inet_aton(localIp)
                + struct.pack('!H', session.localport)
                #+ struct.pack('L', session.publicip) ##  some other related external ip -- sometimes dupe of external
                + inet_aton(session.publicip) ##  some other related external ip -- sometimes dupe of external

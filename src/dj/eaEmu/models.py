@@ -33,7 +33,7 @@ class Channel(models.Model) :
     name = models.CharField(max_length=32)
     prettyName = models.CharField(max_length=32)
     game = models.ForeignKey(Game)
-    flags = models.CharField(max_length=16, blank=True )
+    mode = models.CharField(max_length=16, default='+tlp' )
     topic = models.CharField(max_length=256, null=True )
     users = models.ManyToManyField(User)
 

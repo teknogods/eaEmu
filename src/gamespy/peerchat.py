@@ -312,6 +312,14 @@ class Peerchat(IRCUser):
 
       self.realm.lookupGroup(channel).addCallbacks(cbGroup, ebGroup)
 
+   def _channelMode(self, group, modes=None, *args):
+      if modes:
+         self.sendMessage(
+            irc.ERR_UNKNOWNMODE,
+            ":Unknown MODE flag.")
+      else:
+         self.channelMode(self.name, '#' + group.name, group.mode)
+
 
 class _old_PeerchatFactory(ServerFactory):
    protocol = Peerchat
