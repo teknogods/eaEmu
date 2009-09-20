@@ -229,6 +229,7 @@ class QueryMaster(Protocol):
             for ndx in range(4):
                localIp = getattr(session, 'localip{0}'.format(ndx))
                if localIp.startswith('192'):
+                  print('selecting', localIp)
                   break
             response += ('~'
                ## game channel name is based off of some or all of this info!
@@ -246,8 +247,6 @@ class QueryMaster(Protocol):
                #+ struct.pack('L', session.publicip) ##  some other related external ip -- sometimes dupe of external
                + inet_aton(session.publicip) ##  some other related external ip -- sometimes dupe of external
              )
-            #response += '~\x18\xed\xc7\xa2\x19g\xc0\xa8\x01\x03\x19g\xd1\xa5\x80\x05' #TODO
-            #response += '~c\xf3\xc1\\\x1a&\xc0\xa8\x00\xc2\x1a&E?\xf3\x1a'
             response += ''.join('\xff{0}\x00'.format(getattr(session, f.rstrip('_'))) for f in msg['fields'])
          response += '\x00'
          response += '\xff'*4

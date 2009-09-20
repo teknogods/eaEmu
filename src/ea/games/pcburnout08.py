@@ -4,14 +4,14 @@ from twisted.application.internet import SSLServer, TCPServer
 from twisted.application.service import MultiService
 from twisted.internet.protocol import ServerFactory
 
-from fesl import *
-from matchmaking import *
+from ea.db import *
+from ea.login import *
 #from fwdserver import *
 
 def fC(self, data):
    print repr(data)
    fwdDRC(self, data)
-   
+
 def fS(self, data):
    print repr(data)
    fwdDRS(self, data)
@@ -38,12 +38,12 @@ class Player:
          'OPPO':self.user.name,
          'OPFLAG':self.info['USERFLAGS'],
          'OPPARAM':self.info['USERPARAMS'],
-         
+
          'ADDR':self.user.addr,
          'LADDR':self.user.laddr,
          'MADDR':'', # okay if blank
          'OPID':self.user.id,
-         
+
          # dunno if these ever change
          'PRES':0,
          'OPPART':0,
@@ -62,7 +62,7 @@ class Player:
          'SEED', # should change after init
          'SYSFLAGS',
       ])
-      
+
       # default vals
       self.info.update({
          'COUNT':0, #current player count, including invisible host
@@ -85,33 +85,33 @@ class Player:
          # worst case scenario: it is. solution: man-in-middle to play full verision as though it's trial version
          # is there even a difference??
       })
-      
+
       self.players = []
       self.AddPlayer(Player(info))
-   
+
    def AddPlayer(self, player):
       self.players.append(player)
       self.info['COUNT'] += 1
 
    def RemovePlayer(self, player):
       pass #TODO
-         
+
 
 class Burnout08Session(Session):
    def HandleGameJoin(self, msg):
          # CUSTFLAGS=413345024,FORCE_LEAVE=1,IDENT=6450,MAXSIZE=9,MINSIZE=2,NAME=bixop,PARAMS=,,,d800b85,,72755255,PASS=,PRIV=0,ROOM=0,SEED=9351261,
          # SESS=@brobot2583-bixop-498ea96f,SYSFLAGS=64,USERFLAGS=0,USERPARAMS=PUSMC01?????,,,ff1,,20004,,,3ed10a59
-         
+
          # this response is similar to a game search result but with self included in clients
          # and a few more details:
          # LADDRs, MADDRs,
-         
+
          game = self.theater.FindGame(msg.map['NAME'])
          self.Reply(msg, game.info)
-         
+
          #might also need +who and +mgm before join from server -> cilent
          # also dunno if matchmaker makes request to host like in mercs
-      
+
    def HandleFGet(self, msg):
       # TAG=F
       self.SendWho(self.user.name)
@@ -120,7 +120,7 @@ class Burnout08Session(Session):
          'PRES':'',
       })
       self.Reply(msg)
-      
+
    def SendWho(self, username):
       user = self.theater.GetUser(username)
       self.theaterServ.SendMsg('+who', 0, {
@@ -149,24 +149,24 @@ class Burnout08Session(Session):
       })
    def SendMGM(self, game):
       self.theaterServ.SendMsg('+mgm', 0, game.info)
-   
+
    def HandleGPSC(self, msg): #GPS Create?
       #  CUSTFLAGS=413345024,FORCE_LEAVE=1,MAXSIZE=9,MINSIZE=2,NAME=rtchd,PARAMS=,,,d800b85,,656e5553,PASS=,PRIV=0,
       # REGIONS=15,94,187,140,SEED=0,SYSFLAGS=64,USERFLAGS=0,USERPARAMS=PUSMC01?????,,,ff1,,20004,,,3ed10a59
       game = self.theater.CreateGame(msg.map)
-      
+
       self.Reply(msg)
       self.SendWho(self.user.name)
       self.SendMGM(game)
-      
+
    def Reply(self, msg, map=None):
       map = map or {}
       self.theaterServ.Reply(msg, map) #all go to theaterserv
-      
+
    def HandleHCHK(self, msg):
       self.SendWho(self.user.name)
       self.Reply(msg)
-      
+
    def HandleGameSearch(self, msg):
       if 'CANCEL' in msg.map:
          # client sends gsea CANCEL=1 to tell server to stop sending results
@@ -176,7 +176,7 @@ class Burnout08Session(Session):
          self.Reply(msg, {'COUNT': len(games)}) # number of results
          for game in games:
             self.SendGameSearchResult(game)
-            
+
    def SendGameSearchResult(self, game):
       self.theaterServ.SendMsg('+gam', 0, game.info)
 
@@ -185,15 +185,15 @@ class Burnout08Session(Session):
       # SDKVERS=6.4.0.0,SKU=PC,SLUS=07604772/US,VERS=<<same bindata as before>>
       # TOKEN is used in lieu of NAME when "remember me" is enabled in-game
       # TOKEN is scrambled base64encoded data like in RA3
-      
+
       # invalid login reply looks like this
       #'AUTOPASS':'SOCK67114', # dunno what this is for, only happens with failure
       #reply.flags = 0x70617373 # 'pass' signifies rejected login and has no body
-      
+
       #HACK, FIXME: this info is gathered before login
       laddr = self.user.laddr
       addr = self.user.addr
-      
+
       map = {}
       if 'NAME' in msg.map:
          self.user = self.theater.Login(msg.map['NAME'], msg.map['PASS'])
@@ -203,10 +203,10 @@ class Burnout08Session(Session):
          self.user = self.theater.Login('guest%d'%idNdx, msg.map['PASS'])
          idNdx += 1
          map['TOKEN'] = msg.map['TOKEN']
-      
+
       self.user.laddr = laddr#HACK
       self.user.addr = addr#HACK
-      
+
       map.update({
          'NAME':self.user.name,
          'MAIL':'user@domain.com',
@@ -218,7 +218,7 @@ class Burnout08Session(Session):
          'SPAM':'NN', # probably email notification checkboxes at signup. Y or N for each
          'SINCE':'2006.3.18-12:45:00', # when account was created? doesnt seem to be.
          'LAST':'2009.2.8-09:46:00', # last login time
-         
+
          'ADDR':self.user.addr, # inform client of it's external address
          '_LUID':'$000000000b32588d',
       })
@@ -227,29 +227,29 @@ class Burnout08Session(Session):
 class Burnout08Theater(Theater):
    sessionClass = Burnout08Session
    userClass = User
-   
+
    #TODO: move up hierarchy
    def CreateGame(self, info):
       game = Game(info)
       self.games[info['NAME']] = game
       return game
-   
+
    def GetGames(self):
       return self.games.values()
 
    def Login(self, name, pwd):
       return Theater.CreateUser(self, name, pwd)
-   
+
 burnoutTheater =  Burnout08Theater()
 class Burnout08LoginServer(EaServer):
    theater = burnoutTheater
-   
+
    def handleRequest(self, msg):
       reply = self.messageClass()
       reply.id = msg.id
       reply.flags = 0
       replies = [reply]
-      
+
       if msg.id == '@tic':
          # input line : RC4+MD5-V2
          # no reply necessary
@@ -275,7 +275,7 @@ class Burnout08LoginServer(EaServer):
 
 class Burnout08TheaterServer(EaServer):
    theater = burnoutTheater
-   
+
    def handleRequest(self, msg):
       replies = FeslServer.handleRequest(self, msg)
       if replies != None:
@@ -284,13 +284,13 @@ class Burnout08TheaterServer(EaServer):
       reply.id = msg.id
       reply.flags = 0
       replies = [reply]
-      
+
       if msg.id == 'addr':
          #dict:ADDR=5.84.34.44,PORT=49250
          # this is just local endpoint info
          self.tmpUserAddr = msg.map['ADDR'] #HACKy
          replies = []# no reply
-         
+
          # month and day should be 1 digit but doesnt matter since it just gets bounced anyway
          replies.append(self.messageClass('~png', 0, {
             'REF':time.strftime('%Y.%m.%d-%H:%M:%S', time.gmtime())
@@ -317,12 +317,12 @@ class Burnout08TheaterServer(EaServer):
                'BUDDY_SERVER':'159.153.234.52',
                'BUDDY_PORT':13505,
                'GPS_REGIONS':'159.153.202.54,159.153.105.104,159.153.161.178,159.153.174.133',
-               
+
                'EACONNECT_WEBOFFER_URL':'"http://gos.ea.com/easo/editorial/common/2008/eaconnect/connect.jsp?site=easo&lkey=$LKEY$&lang=%s&country=%s"',
                'TOSAC_URL':'"http://gos.ea.com/easo/editorial/common/2008/tos/tos.jsp?style=accept&lang=%s&platform=pc&from=%s"',
                'TOSA_URL':'"http://gos.ea.com/easo/editorial/common/2008/tos/tos.jsp?style=view&lang=%s&platform=pc&from=%s"',
                'TOS_URL':'"http://gos.ea.com/easo/editorial/common/2008/tos/tos.jsp?lang=%s&platform=pc&from=%s"',
-               
+
                'USE_GLOBAL_ROAD_RULE_SCORES':0,
                'ROAD_RULES_RESET_DATE':'2007.10.11 18:00:00',
                'CAR_OLD_ROAD_RULES_TAGFIELD':'"RULES,RULES1,RULES2,RULES3,RULES4,RULES5,RULES6,RULES7,RULES8,RULES9,RULES10,RULES11,RULES12,RULES13,RULES14,RULES15,RULES16"',
@@ -336,30 +336,30 @@ class Burnout08TheaterServer(EaServer):
                'ROAD_RULES_SKEY':'frscores',
                'PROFANE_STRING':'"@/&!"',
                'CHAL_SKEY':'chalscores',
-               
+
                'FEVER_CARRIERS':'FritzBraun,EricWimp,Matazone,NutKC,FlufflesDaBunny,Flinnster,Molen,LingBot,DDangerous,Technocrat,The PLB,Chipper1977,Bazmobile,CustardKid,The Wibbler,AlexBowser,Blanks 82,Maxreboh,Jackhamma,MajorMajorMajor,Riskjockey,ChiefAV,Charnjit,Zietto,BurntOutDave,Belj,Cupster,Krisis1969,OrangeGopher,Phaigoman,Drastic Surgeon,Tom Underdown,Discodoktor,Cargando,Gaztech,PompeyPaul,TheSoldierBoy,louben17,Colonel Gambas,EliteBeatAgent,Uaintdown,SynergisticFX,InfamousGRouse,EAPR,EAPR 02,Jga360 JP2,EAJproduct',
                'TELE_DISABLE':'AD,AF,AG,AI,AL,AM,AN,AO,AQ,AR,AS,AW,AX,AZ,BA,BB,BD,BF,BH,BI,BJ,BM,BN,BO,BR,BS,BT,BV,BW,BY,BZ,CC,CD,CF,CG,CI,CK,CL,CM,CN,CO,CR,CU,CV,CX,DJ,DM,DO,DZ,EC,EG,EH,ER,ET,FJ,FK,FM,FO,GA,GD,GE,GF,GG,GH,GI,GL,GM,GN,GP,GQ,GS,GT,GU,GW,GY,HM,HN,HT,ID,IL,IM,IN,IO,IQ,IR,IS,JE,JM,JO,KE,KG,KH,KI,KM,KN,KP,KR,KW,KY,KZ,LA,LB,LC,LI,LK,LR,LS,LY,MA,MC,MD,ME,MG,MH,ML,MM,MN,MO,MP,MQ,MR,MS,MU,MV,MW,MY,MZ,NA,NC,NE,NF,NG,NI,NP,NR,NU,OM,PA,PE,PF,PG,PH,PK,PM,PN,PS,PW,PY,QA,RE,RS,RW,SA,SB,SC,SD,SG,SH,SJ,SL,SM,SN,SO,SR,ST,SV,SY,SZ,TC,TD,TF,TG,TH,TJ,TK,TL,TM,TN,TO,TT,TV,TZ,UA,UG,UM,UY,UZ,VA,VC,VE,VG,VN,VU,WF,WS,YE,YT,ZM,ZW,ZZ',
-               
+
                'BUNDLE_PATH':'"https://gos.ea.com/easo/editorial/Burnout/2008/livedata/bundle/"',
-               
+
                'NEWS_DATE':'2008.6.11 21:00:00',
                'NEWS_URL':'"http://gos.ea.com/easo/editorial/common/2008/news/news.jsp?lang=%s&from=%s&game=Burnout&platform=pc"',
-               
+
                'AVAIL_DLC_URL':'"https://gos.ea.com/easo/editorial/Burnout/2008/livedata/Ents.txt" ',
-               
+
                'AVATAR_URL':'"http://www.criteriongames.com/pcstore/avatar.php?persona=%s"',
                'AVATAR_URL_ENCRYPTED':1,
-               
+
                'STORE_DLC_URL':'"http://pctrial.burnoutweb.ea.com/pcstore/store_dlc.php?lang=%s&from=%s&game=Burnout&platform=pc&env=live&nToken=%s&prodid=%s"',
                'STORE_URL':'"http://pctrial.burnoutweb.ea.com/t2b/page/index.php?lang=%s&from=%s&game=Burnout&platform=pc&env=live&nToken=%s"',
                'STORE_URL_ENCRYPTED':1,
-               
+
                'ETOKEN_URL':'"https://gos.ea.com/easo/editorial/common/2008/nucleus/nkeyToNucleusEncryptedToken.jsp?nkey=%s&signature=%s"',
                'USE_ETOKEN':1,
-               
+
                'LIVE_NEWS_URL':'"https://gos.ea.com/easo/editorial/Burnout/2008/livedata/main.jsp?lang=%s&from=%s&game=Burnout&platform=pc&env=live&nToken=%s"',
                'LIVE_NEWS2_URL':'"http://portal.burnoutweb.ea.com/loading.php?lang=%s&from=%s&game=Burnout&platform=pc&env=live&nToken=%s"',
-               
+
                'PRODUCT_DETAILS_URL':'"http://pctrial.burnoutweb.ea.com/t2b/page/ofb_pricepoints.php?productID=%s&env=live"',
                'PRODUCT_SEARCH_URL':'"http://pctrial.burnoutweb.ea.com/t2b/page/ofb_DLCSearch.php?env=live"',
             })
@@ -495,7 +495,7 @@ class Burnout08TheaterServer(EaServer):
          replies = []
       elif msg.id == 'glea': # Game LEAve
          # FORCE=1 SET=0
-         
+
          #server sends back all the game info again...
          # ADDR0=159.153.161.174,ADDR1=95.72.167.223,COUNT=2,CUSTFLAGS=413345024,EVGID=0,EVID=0,GAMEMODE=0,GAMEPORT=9657,GPSHOST=bixop,GPSREGION=2,HOST=@brobot2583,IDENT=6450,LADDR0=10.161.162.89,LADDR1=192.168.1.5,MADDR0=,MADDR1=$001fc61bc95c,MAXSIZE=9,MINSIZE=2,NAME=bixop,NUMPART=1,OPFLAG0=0,OPFLAG1=413345024,OPID0=650,OPID1=71666,OPPART0=0,OPPART1=0,OPPO0=@brobot2583,OPPO1=bixop,PARAMS=",,,d800b85,,72755255",PARTSIZE0=9,PRES0=0,PRES1=0,PRIV=0,ROOM=0,SEED=9351261,SYSFLAGS=64,VOIPPORT=9667,WHEN=2009.2.8-9:44:15,WHENC=2009.2.8-9:44:15
          pass #TODO
@@ -506,7 +506,7 @@ class Burnout08TheaterServer(EaServer):
          # {'RIVAL0': ',,,,,,,,,,,,bixop'}
          # TODO: never capped this
          pass
-      
+
       else:
          replies = None
       if replies == None:
@@ -520,16 +520,16 @@ class Burnout08LoginServerFactory(ServerFactory):
 class Burnout08TheaterServerFactory(ServerFactory):
    protocol = Burnout08TheaterServer
    log = logging.getLogger('theater.burnout08')
-   
+
 class Burnout08Service(MultiService):
    def __init__(self, addresses=None):
       MultiService.__init__(self)
-      
+
       ctx = OpenSSLContextFactoryFactory.getFactory('EA')
       fact = Burnout08LoginServerFactory()
       #fact = makeTLSFwdFactory('fesl.fwdCli', 'fesl.fwdSer', fC, fS)(*address)
       self.addService(SSLServer(addresses[0][1], fact, ctx))
-      
+
       fact = Burnout08TheaterServerFactory()
       #fact = makeTCPFwdFactory('theater.fwdCli', 'theater.fwdSer', fwdDRC, fwdDRS)(address[0], address[1]+1)
       self.addService(TCPServer(addresses[0][1]+1, fact))

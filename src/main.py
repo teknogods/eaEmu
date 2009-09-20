@@ -10,7 +10,7 @@ try:
    interface = ui.wx.wxMain
 except:
    print 'Couldn\'t import WX, running in console-only mode.'
-   
+
 from twisted.internet import reactor
 
 import re
@@ -26,7 +26,7 @@ from twisted.python import log
 
 servers = {
    # TODO: maybe move port #'s and hosts into the classes themselves?
-   
+
    # Men of War
    'gamespy.games.menofwar.MowService':[
       ('gpcm.gamespy.com', 29900),
@@ -47,14 +47,14 @@ servers = {
       ('mercs2-pc.fesl.ea.com', 18710), # makes theater server at port +1
       #('mercs2-theater.fesl.ea.com', 18715), #not needed since hostname sent by fesl
    ],
-    
+
    # Burnout Paradise The Ultimate Box
    'ea.games.pcburnout08.Burnout08Service':[
       ('pcburnout08.ea.com', 21841), # makes theater(ish) server at port +1
    ],
 
    # RA 3
-   'ea.games.redalert3.RedAlert3Service':[
+   'ea.games.redalert3.Service':[
       ('cncra3-pc.fesl.ea.com', 18840),
       #('cncra3-pc.theater.ea.com', 18845), # not in use by EA, not strictly needed anyway
       ('redalert3pc.available.gamespy.com', 27900),
@@ -67,6 +67,11 @@ servers = {
       ('redalert3pc.ms1.gamespy.com', None),
       ('psweb.gamespy.com', None),
    ],
+   # Need for Speed SHIFT (pro shift 2)
+   'ea.games.nfsps2.Service':[
+      ('nfsps2-pc.fesl.ea.com', 18201),
+      ('nfsps2-pc.theater.ea.com', 18202), # nomally 18206 FIXME: dont hardcode these relative port offsets
+   ],
 }
 
 def main(argv=None):
@@ -77,13 +82,16 @@ def main(argv=None):
       logging.config.fileConfig(logCfg)
    else:
       print '{0} not found -- network traffic logging disabled.'.format(logCfg)
-      
+
    if interface:
       interface.servers = servers #TODO: decouple this list from main methods
       interface.main(argv)
    else:
       log.startLogging(sys.stdout)
-      for serviceName in ['ea.games.redalert3.RedAlert3Service']:
+      for serviceName in [
+         'ea.games.redalert3.Service',
+         #'ea.games.nfsps2.Service',
+         ]:
          addresses = servers[serviceName]
          mod, name = serviceName.rsplit('.', 1)
          service = getattr(__import__(mod, fromlist=[name]), name)(addresses)
