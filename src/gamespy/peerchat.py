@@ -18,51 +18,6 @@ import db
 from cipher import *
 import aspects2 as aspects
 
-'''
-2009-08-22 17:36:30,263 - gamespy.chatServ - received: 'JOIN #GSP!redalert3pc!Ma1a1D10cM \r\n'
-2009-08-22 17:36:30,277 - gamespy.gpcm.server - server received: \status\1\sesskey\17007244\statstring\Online\locstring\\final\
-2009-08-22 17:36:31,302 - gamespy.chatCli - received: ':s 702 #GPG!2167 #GPG!2167 wickybangbang BCAST :\\b_flags\\
-:Jackalus!Xs1pfFWvpX|165580976@* JOIN :#GSP!redalert3pc!Ma1a1D10cM\
-:s 332 Jackalus #GSP!redalert3pc!Ma1a1D10cM :RodanVSGodzilla 2v2 U CANNOT DEFEAT US!
-:s 333 Jackalus #GSP!redalert3pc!Ma1a1D10cM RodanVSGodzilla 1250987477
-:s 353 Jackalus = #GSP!redalert3pc!Ma1a1D10cM :@RodanVSGodzilla @Bloodtrocuted wweo77o6277ls1 Jackalus
-:s 366 Jackalus #GSP!redalert3pc!Ma1a1D10cM :End of NAMES list
-:RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :PN/ 0=RodanVSGodzilla,1=Bloodtrocuted,2=wweo77o6277ls1,3=Jackalus
-:RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :SL/ M=281data/maps/official/map_mp_4_feasel1_ep1;MC=37EA6978;MS=0;SD=-72651989;GSID=118E;GT=-1;PC=-1;RU=3 100 10000 0 1 10 1 1 0 -1 0 -1 -1 1 ;S=H,4CBA6E18,0,TT,6,8,3,0,0,1,-1,:H,4CBA6E18,8088,FT,2,2,0,0,0,1,-1,:H,5E807904,8088,FT,-1,7,-1,1,0,1,-1,:H,1807794F,8088,FT,-1,7,-1,-1,0,1,-1,:X:X:;
-:RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :Pings/ ,,,,0,0
-:RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :PIDS/ d27d30c, ,d32dc69, ,cb4f9ca, ,9de90b0, , , , , ,
-:RodanVSGodzilla!XvqGGW9sqX|220713740@* UTM Jackalus :NAT/ NATHOST0 1764730201 RodanVSGodzilla
-2009-08-22 17:36:31,322 - gamespy.chatServ - received: 'MODE #GSP!redalert3pc!Ma1a1D10cM
-SETCKEY #GPG!2167 Jackalus :\\b_flags\\s
-SETCKEY #GSP!redalert3pc!Ma1a1D10cM Jackalus :\\b_flags\\s
-GETCKEY #GSP!redalert3pc!Ma1a1D10cM * 030 0 :\\username\\b_flags\r\n'
-2009-08-22 17:36:31,335 - gamespy.gpcm.server - server received: \status\3\sesskey\17007244\statstring\Staging\locstring\2v2 U CANNOT DEFEAT US!\final\
-2009-08-22 17:36:31,375 - gamespy.chatServ - received: 'SETCKEY #GPG!2167 Jackalus :\\b_clanName\\\\b_arenaTeamID\\0\\b_locale\\0\\b_wins\\0\\b_losses\\1\\b_rank1v1\\\\b_rank2v2\\\\b_clan1v1\\\\b_clan2v2\\\\b_elo1v1\\\\b_elo2v2\\\\b_onlineRank\\1\r\nSETCKEY #GSP!redalert3pc!Ma1a1D10cM Jackalus :\\b_clanName\\\\b_arenaTeamID\\0\\b_locale\\0\\b_wins\\0\\b_losses\\1\\b_rank1v1\\\\b_rank2v2\\\\b_clan1v1\\\\b_clan2v2\\\\b_elo1v1\\\\b_elo2v2\\\\b_onlineRank\\1\r\nGETCKEY #GSP!redalert3pc!Ma1a1D10cM * 031 0 :\\b_clanName\\b_arenaTeamID\\b_locale\\b_wins\\b_losses\\b_rank1v1\\b_rank2v2\\b_clan1v1\\b_clan2v2\\b_elo1v1\\b_elo2v2\\b_onlineRank\r\n'
-2009-08-22 17:36:31,467 - gamespy.chatServ - received: 'UTM #GSP!redalert3pc!Ma1a1D10cM :BCLR/ \r\n'
-2009-08-22 17:36:31,478 - gamespy.chatCli - received: ':lxxx!XFlpuv9vpX|201003054@* PART #GPG!2167 :\n'
-2009-08-22 17:36:31,561 - gamespy.chatCli - received: ':s 324 Jackalus #GSP!redalert3pc!Ma1a1D10cM +tnle 6\n:s 702 #GSP!redalert3pc!Ma1a1D10cM #GSP!redalert3pc!Ma1a1D10cM Jackalus BCAST :\\b_flags\\s\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM Jackalus 030 :\\Xs1pfFWvpX|165580976\\s\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM wweo77o6277ls1 030 :\\X19pffvffX|213187018\\s\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM Bloodtrocuted 030 :\\XvqGGW9sqX|221437033\\s\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM RodanVSGodzilla 030 :\\XvqGGW9sqX|220713740\\sh\n:s 703 Jackalus #GSP!redalert3pc!Ma1a1D10cM 030 :End of GETCKEY\n:s 702 #GSP!redalert3pc!Ma1a1D10cM #GSP!redalert3pc!Ma1a1D10cM Jackalus BCAST :\\b_clanName\\\\b_arenaTeamID\\0\\b_locale\\0\\b_wins\\0\\b_losses\\1\\b_rank1v1\\\\b_rank2v2\\\\b_clan1v1\\\\b_clan2v2\\\\b_elo1v1\\\\b_elo2v2\\\\b_onlineRank\\1\n'
-2009-08-22 17:36:31,615 - gamespy.chatCli - received: ':s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM Jackalus 031 :\\\\0\\0\\0\\1\\\\\\\\\\\\\\1\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM wweo77o6277ls1 031 :\\\\0\\0\\2\\21\\13917\\-1\\-1\\-1\\910\\-1\\5\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM Bloodtrocuted 031 :\\\\0\\0\\26\\6\\-1\\-1\\-1\\-1\\-1\\-1\\6\n:s 702 Jackalus #GSP!redalert3pc!Ma1a1D10cM RodanVSGodzilla 031 :\\\\0\\0\\49\\29\\13617\\-1\\-1\\-1\\919\\-1\\12\n:s 703 Jackalus #GSP!redalert3pc!Ma1a1D10cM 031 :End of GETCKEY\n'
-2009-08-22 17:36:31,663 - gamespy.chatCli - received: ':s 702 #GPG!2167 #GPG!2167 Jackalus BCAST :\\b_flags\\s\n:s 702 #GPG!2167 #GPG!2167 Jackalus BCAST :\\b_clanName\\\\b_arenaTeamID\\0\\b_locale\\0\\b_wins\\0\\b_losses\\1\\b_rank1v1\\\\b_rank2v2\\\\b_clan1v1\\\\b_clan2v2\\\\b_elo1v1\\\\b_elo2v2\\\\b_onlineRank\\1\n'
-2009-08-22 17:36:32,339 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :MAP 1\r\n'
-2009-08-22 17:36:32,356 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :REQ/ PlayerTemplate=7\r\n'
-2009-08-22 17:36:32,373 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :REQ/ Color=-1\r\n'
-2009-08-22 17:36:32,417 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :REQ/ clanID=\r\n'
-2009-08-22 17:36:32,763 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :NAT NATINITED3 1764730201 Jackalus\r\n'
-2009-08-22 17:36:33,264 - gamespy.chatCli - received: ':RodanVSGodzilla!XvqGGW9sqX|220713740@* UTM Jackalus :NAT/ NEGO0 3 692FA55A\n'
-2009-08-22 17:36:33,793 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :REQ/ StartPos=2\r\n'
-2009-08-22 17:36:34,140 - gamespy.chatCli - received: ':RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :PN/ 0=RodanVSGodzilla,1=Bloodtrocuted,2=wweo77o6277ls1,3=Jackalus\n'
-2009-08-22 17:36:34,359 - gamespy.chatCli - received: ':RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :SL/ M=281data/maps/official/map_mp_4_feasel1_ep1;MC=37EA6978;MS=0;SD=-72651989;GSID=118E;GT=-1;PC=-1;RU=3 100 10000 0 1 10 1 1 0 -1 0 -1 -1 1 ;S=H,4CBA6E18,0,TT,6,8,3,0,0,1,-1,:H,4CBA6E18,8088,FT,2,2,0,0,0,1,-1,:H,5E807904,8088,FT,-1,7,-1,1,0,1,-1,:H,1807794F,8088,FT,-1,7,2,-1,0,1,-1,:X:X:;\n'
-2009-08-22 17:36:34,390 - gamespy.chatCli - received: ':RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :Pings/ ,,,,0,0\n:RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :PIDS/ d27d30c, ,d32dc69, ,cb4f9ca, ,9de90b0, , , , , ,\n'
-2009-08-22 17:36:35,199 - gamespy.chatServ - received: 'UTM RodanVSGodzilla :REQ/ StartPos=1\r\n'
-2009-08-22 17:36:35,452 - gamespy.chatCli - received: ':RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :PN/ 0=RodanVSGodzilla,1=Bloodtrocuted,2=wweo77o6277ls1,3=Jackalus\n'
-2009-08-22 17:36:35,674 - gamespy.chatCli - received: ':RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :SL/ M=281data/maps/official/map_mp_4_feasel1_ep1;MC=37EA6978;MS=0;SD=-72651989;GSID=118E;GT=-1;PC=-1;RU=3 100 10000 0 1 10 1 1 0 -1 0 -1 -1 1 ;S=H,4CBA6E18,0,TT,6,8,3,0,0,1,-1,:H,4CBA6E18,8088,FT,2,2,0,0,0,1,-1,:H,5E807904,8088,FT,-1,7,-1,1,0,1,-1,:H,1807794F,8088,FT,-1,7,1,-1,0,1,-1,:X:X:;\n'
-2009-08-22 17:36:35,705 - gamespy.chatCli - received: ':RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :Pings/ ,,,,0,0\n:RodanVSGodzilla!*@* UTM #GSP!redalert3pc!Ma1a1D10cM :PIDS/ d27d30c, ,d32dc69, ,cb4f9ca, ,9de90b0, , , , , ,\n'
-2009-08-22 17:36:36,466 - gamespy.chatServ - received: 'PART #GSP!redalert3pc!Ma1a1D10cM :\r\nSETCKEY #GPG!2167 Jackalus :\\b_flags\\\r\n'
-2009-08-22 17:36:36,481 - gamespy.gpcm.server - server received: \status\1\sesskey\17007244\statstring\Online\locstring\\final\
-2009-08-22 17:36:36,565 - gamespy.masterSrv - received: "\x00\xd9\x00\x01\x03\x00\x00\x01\x00redalert3pc\x00redalert3pc\x000lOLkr-'(groupid=2167) AND (gamemode != 'closedplaying')\x00\\hostname\\gamemode\\hostname\\mapname\\gamemode\\vCRC\\iCRC\\cCRC\\pw\\obs\\rules\\pings\\numRPlyr\\maxRPlyr\\numObs\\mID\\mod\\modv\\name_\x00\x00\x00\x00\x04"
-'''
-
-
 class Peerchat(IRCUser):
    def connectionMade(self):
       IRCUser.connectionMade(self)
@@ -82,7 +37,8 @@ class Peerchat(IRCUser):
    def sendLine(self, line):
       self.log.debug('send IRC: {0}'.format(repr(line)))
       ## peerchat doesn't send \r, as this does, but shouldn't matter
-      IRCUser.sendLine(self, line)
+      #IRCUser.sendLine(self, line)
+      self.transport.write(line + '\n')
 
    # TODO: enumerate GS cmd ids and use more meaningful names
    def irc_CRYPT(self, prefix, params):
@@ -96,8 +52,8 @@ class Peerchat(IRCUser):
       user, ip, host, cdkey = params
       encIp, profileId = user.split('|')
 
-      self.user = DbUser.objects.get(id=db.Persona.objects.get(id=profileId).user.id) #HACKy XXX
-      assert self.user.getIrcUserString() == user
+      #self.avatar = DbUser.objects.get(id=db.Persona.objects.get(id=profileId).user.id) #HACKy XXX # TODO use deferred
+      #assert self.avatar.getIrcUserString() == user
 
       ## NOTE: don't call supermethod here
 
@@ -123,7 +79,7 @@ class Peerchat(IRCUser):
 
       # Here is the fix for impersonation: use name found during USER command
       # TODO: remove this when new auth methods are plugged in
-      #self.nick = db.Persona.objects.get(user=self.user, selected=True).name
+      #self.nick = db.Persona.objects.get(user=self.avatar, selected=True).name
 
       IRCUser.irc_NICK(self, prefix, params) ## sends _welcomeMessage
 
@@ -134,30 +90,21 @@ class Peerchat(IRCUser):
       ## TODO: make sure everything is send just like in original peerchat impl
       IRCUser.irc_JOIN(self, prefix, params)
 
-   def getClientPrefix(self, short=False):
-      ## follows RFC prefix BNF, but with encIp,gsProf
-      if short:
-         ## sometimes this has '*' in place of 2nd and 3rd parts of string
-         return '{0}!{1}@{2}'.format(self.user.getPersona().name, '*', '*')
-      else:
-         ## pretty sure part after '@' (hostname) is always '*'
-         return '{0}!{1}@{2}'.format(self.user.getPersona().name, self.user.getIrcUserString(), '*')
-
    def irc_PART(self, prefix, params):
       ## TODO: delete gamelobby once empty
       IRCUser.irc_PART(self, prefix, params)
 
    ## IChatClient implementation
-   def userJoined(self, group, user):
+   def userJoined(self, group, client):
       self.join(
-         self.getClientPrefix(),
+         client.avatar.getClientPrefix(),
          '#' + group.name)
 
 
-   def userLeft(self, group, user, reason=None):
+   def userLeft(self, group, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
       self.part(
-         self.getClientPrefix(),
+         client.avatar.getClientPrefix(),
          '#' + group.name,
          (reason or u'').encode(self.encoding, 'replace'))
 
@@ -180,7 +127,7 @@ class Peerchat(IRCUser):
          if 'prefix' in message:
             prefix = message['prefix']
          else:
-            prefix = sender.getClientPrefix()
+            prefix = sender.avatar.getClientPrefix()
          if 'command' in message:
             self.sendLine(":{0} {1} {2} :{3}".format(prefix, message['command'],
                                                      recipientName, lowQuote(line)))
@@ -191,35 +138,41 @@ class Peerchat(IRCUser):
                recipientName,
                line)
 
-   def irc_UTM(self, prefix, params):
-      try:
-         targetName = params[0].decode(self.encoding)
-      except UnicodeDecodeError:
-         self.sendMessage(
-            irc.ERR_NOSUCHNICK, targetName,
-            ":No such nick/channel (could not decode your unicode!)")
-         return
+   def aliasOfPrivmsg(command):
+      def method (self, prefix, params):
+         try:
+            targetName = params[0].decode(self.encoding)
+         except UnicodeDecodeError:
+            self.sendMessage(
+               irc.ERR_NOSUCHNICK, targetName,
+               ":No such nick/channel (could not decode your unicode!)")
+            return
 
-      if targetName.startswith('#'):
-         target = self.realm.lookupGroup(targetName[1:])
-      else:
-         target = self.realm.lookupUser(targetName).addCallback(lambda user: user.mind)
+         messageText = params[-1]
 
-      messageText = params[-1]
+         def cbTarget(targ):
+            if targ is not None:
+               msg = {'text':messageText, 'command':command}
+               if command == 'UTM' and 'NAT' not in messageText: ## a HACK that may be unnecessary
+                  msg['prefix'] = self.avatar.getClientPrefix(short=True) ## send long prefix for NAT commands
+               elif command == 'UTM' and 'SCD' in messageText: ## HACK to not send SCD
+                  return
+               return self.avatar.send(targ, msg)
 
-      def cbTarget(targ):
-         if targ is not None:
-            msg = {'text':messageText, 'command':'UTM'}
-            if 'NAT' in messageText: ## a HACK that may be unnecessary
-               msg['prefix'] = self.getClientPrefix(short=True) ## send short prefix for NAT commands
-            return self.avatar.send(targ, msg)
+         def ebTarget(err):
+            self.sendMessage(
+               irc.ERR_NOSUCHNICK, targetName,
+               ":No such nick/channel.")
 
-      def ebTarget(err):
-         self.sendMessage(
-            irc.ERR_NOSUCHNICK, targetName,
-            ":No such nick/channel.")
+         if targetName.startswith('#'):
+            self.realm.lookupGroup(targetName[1:]).addCallbacks(cbTarget, ebTarget)
+         else:
+            for name in targetName.split(','):
+               self.realm.lookupUser(name).addCallback(lambda user: user.mind).addCallbacks(cbTarget, ebTarget)
+      return method
 
-      target.addCallbacks(cbTarget, ebTarget)
+   irc_UTM = aliasOfPrivmsg('UTM')
+   irc_NOTICE = aliasOfPrivmsg('NOTICE')
 
    def irc_WHO(self, prefix, params):
       pass
@@ -267,8 +220,42 @@ class Peerchat(IRCUser):
       self.realm.lookupGroup(grp).addCallbacks(cbGroup, ebGroup)
 
    def irc_SETCKEY(self, prefix, params):
-      # SET triggers BCAST to others in chan as well?
-      pass # TODO: analyze and implement
+      chan, nick, fields = params
+      fields  = fields.split('\\')[1:]
+      changes = dict(zip(fields[::2], fields[1::2]))
+      fields = fields[::2]
+
+      grp = unicode(chan[1:])
+
+      ## save to db
+      ## TODO: defer this to thread
+      changes = dict((k, v) for k, v in changes.iteritems() if v) ## remove nulls
+      if 'b_arenaTeamID' in changes:
+         changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
+      stats = db.Stats.objects.get_or_create(persona=self.avatar.getPersona(), game=db.Game.objects.get(name='redalert3pc'))[0] # TODO, FIXME
+      db.Stats.objects.filter(id=stats.id).update(**changes)
+
+      def ebGroup(err):
+         err.trap(ewords.NoSuchGroup)
+         pass ## TODO
+
+      def cbGroup(group):
+         ## broadcast the change
+         for user in group.users.exclude(id=self.avatar.id):
+            response = ':'
+            for f in fields:
+               response += '\\{0}'.format(f)
+               if f == 'username':
+                  response += '\\{0}'.format(user.getIrcUserString())
+               elif f == 'b_arenaTeamID':
+                  response += '\\{0}'.format(getattr(stats, f).id)
+               else:
+                  response += '\\{0}'.format(getattr(stats, f))
+            self.sendMessage('702', chan, self.avatar.name, 'BCAST', response, to=chan)
+
+      ## TODO: assert that user is self!!
+      self.realm.lookupGroup(grp).addCallbacks(cbGroup, ebGroup)
+
 
    def _sendTopic(self, group):
       '''
@@ -312,7 +299,7 @@ class Peerchat(IRCUser):
 
       self.realm.lookupGroup(channel).addCallbacks(cbGroup, ebGroup)
 
-   def _channelMode(self, group, modes=None, *args):
+   def _channelMode(self, group, modes=None, *args): ## what can args be?
       if modes:
          self.sendMessage(
             irc.ERR_UNKNOWNMODE,
@@ -320,17 +307,20 @@ class Peerchat(IRCUser):
       else:
          self.channelMode(self.name, '#' + group.name, group.mode)
 
-
-class _old_PeerchatFactory(ServerFactory):
-   protocol = Peerchat
-
-   def __init__(self,  gameName):
-      self.gameName = gameName
-
-   def buildProtocol(self, addr):
-      inst = ServerFactory.buildProtocol(self, addr)
-      inst.cipherFactory = PeerchatCipherFactory(db.Game.getKey(self.gameName))
-      return inst
+   def _userMode(self, user, modes=None):
+      if modes:
+         #self.sendMessage(
+            #irc.ERR_UNKNOWNMODE,
+            #":Unknown MODE flag.")
+         pass ## TODO: actually implement? - not necessary since game clients only
+      elif user is self.avatar:
+         self.sendMessage(
+            irc.RPL_UMODEIS,
+            "+")
+      else:
+         self.sendMessage(
+            irc.ERR_USERSDONTMATCH,
+            ":You can't look at someone else's modes.")
 
 class PeerchatFactory(IRCFactory):
    protocol = Peerchat
@@ -362,19 +352,12 @@ class DbGroup(db.Channel):
    class Meta:
       proxy = True
 
-   clientMap = {} #double HACKy -- need to maintain this classwide as class gets reinstantiated by queries
-
    def __init__(self, *args, **kw):
       db.Channel.__init__(self, *args, **kw)
 
-      #print('{0} id={1}, haspk={2}, pk={3}'.format(self.name, self.id, hasattr(self, 'pk'), self.pk if hasattr(self, 'pk') else 'N/A'))
       ## FIXME: remove this HACK or at least find better way to check if a new chan
       if self.id is None: ## is this channel newly created (eg, gamelobby GSP chan)
          self.save() ## save so we can store clients in clientMap
-
-      if self.id not in DbGroup.clientMap:
-         DbGroup.clientMap[self.id] = {}
-      self.clients = DbGroup.clientMap[self.id] ## used to find Protocol+IChatClient objects by their dbUser.id
 
       ## self.users is in the db and contains DbUser objects
       ## self.clients is a map from user.id to IRCUser instance
@@ -384,7 +367,6 @@ class DbGroup(db.Channel):
    def _ebUserCall(self, err, client):
       return failure.Failure(Exception(client, err))
 
-
    def _cbUserCall(self, results):
       for (success, result) in results:
          if not success:
@@ -392,41 +374,36 @@ class DbGroup(db.Channel):
             self.remove(clientuser, err.getErrorMessage())
 
    def add(self, client):
-      #print('userlist in db is currently {0}'.format([u.login for u in self.users.all()]))
-      #print('userlist in mem is currently {0}'.format(self.clients.keys()))
-      #print('adding {0} to {1}'.format(client.user.login, self.name))
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
-      if client.user not in self.users.all():
+      if client.avatar not in self.users.all():
          additions = []
-         self.users.add(client.user)
-         self.clients[client.user.id] = client
+         self.users.add(client.avatar) ## TODO: deferred
          ## notify other clients in this group
-         for usr in self.users.exclude(id=client.user.id): ## better way to write this?
-            if usr.id not in self.clients:
+         for usr in self.users.exclude(id=client.avatar.id): ## better way to write this?
+            usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
+            clt = usr.mind
+            if clt is None:
                continue ## HACK: this skips clients that exit badly
-            clt = self.clients[usr.id]
-            d = defer.maybeDeferred(clt.userJoined, self, client.user)
+            d = defer.maybeDeferred(clt.userJoined, self, client)
             d.addErrback(self._ebUserCall, client=clt)
             additions.append(d)
          ## callbacks for Deferreds in a DeferredList are fired only once all have completed
          defer.DeferredList(additions).addCallback(self._cbUserCall)
-      #print('userlist in db is now {0}'.format([u.login for u in self.users.all()]))
-      #print('userlist in mem is now {0}'.format(self.clients.keys()))
       return defer.succeed(None)
 
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
-      if client.user in self.users.all():
-         self.users.remove(client.user)
+      if client.avatar in self.users.all():
+         self.users.remove(client.avatar)
          removals = []
-         for usr in self.users.exclude(id=client.user.id):
-            if usr.id not in self.clients:
+         for usr in self.users.exclude(id=client.avatar.id):
+            usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
+            clt = usr.mind
+            if clt is None:
                continue ## HACK: this is need for clients that exit badly
-            clt = self.clients[client.user.id]
-            d = defer.maybeDeferred(clt.userLeft, self, client.user, reason)
+            d = defer.maybeDeferred(clt.userLeft, self, client, reason)
             d.addErrback(self._ebUserCall, client=clt)
             removals.append(d)
-         del self.clients[client.user.id]
          defer.DeferredList(removals).addCallback(self._cbUserCall)
       return defer.succeed(None)
 
@@ -437,12 +414,13 @@ class DbGroup(db.Channel):
    def receive(self, sender, recipient, message):
       assert recipient is self
       receives = []
-      #print('users receiving: {0} message: {1}'.format([u.login for u in self.users.exclude(id=sender.user.id)], message))
-      #print('users in my map: {0} message: {1}'.format([c.user.login for c in self.clients.values()], message))
-      for usr in self.users.exclude(id=sender.user.id):
-         if usr.id not in self.clients:
+      #print('users receiving: {0} message: {1}'.format([u.login for u in self.users.exclude(id=sender.avatar.id)], message))
+      #print('users in my map: {0} message: {1}'.format([c.avatar.login for c in self.clients.values()], message))
+      for usr in self.users.exclude(id=sender.avatar.id):
+         usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
+         clt = usr.mind
+         if clt is None:
             continue ## HACK: this is need for clients that exit badly
-         clt = self.clients[usr.id]
          d = defer.maybeDeferred(clt.receive, sender, self, message)
          d.addErrback(self._ebUserCall, client=clt)
          receives.append(d)
@@ -456,7 +434,11 @@ class DbUser(db.User):
 
    # FIXME: these are not preserved in db
    realm = None # realm handles logins
-   mind = None # 'mind' is really the IRCUser instance or 'client'
+
+   ## this gets wiped when the obj is constructed by a query
+   #mind = None # 'mind' is really the IRCUser instance or 'client'
+   ## so use this instead with a getter
+   minds = {} # user id to client mapping
 
    class Meta:
       proxy = True
@@ -466,13 +448,19 @@ class DbUser(db.User):
       return DbUser.objects.get(id=db.Persona.objects.get(name=name).user.id)
 
    ## NOTE that we cant use this field in queries!
-   def get_name(self):
+   def _get_name(self):
       return self.getPersona().name
-   name = property(fget=get_name)
+   name = property(_get_name)
+
+   def _get_mind(self):
+      return DbUser.minds[self.id]
+   def _set_mind(self, value):
+      DbUser.minds[self.id] = value
+   mind = property(_get_mind, _set_mind)
 
    def loggedIn(self, realm, mind):
       self.realm = realm
-      self.mind = mind
+      DbUser.minds[self.id] = mind
       from time import time
       self.signOn = time()
 
@@ -486,6 +474,25 @@ class DbUser(db.User):
       from time import time
       self.lastMessage = time()
       return recipient.receive(self.mind, recipient, message)
+
+   def getIrcUserString(self):
+      'returns the encoded ip and profile id of this user'
+      # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
+      try:
+         return '{0}|{1}'.format(IpEncode.encode(self.loginsession.extIp), self.getPersona().id)
+      except self.DoesNotExist, ex:
+         print('WARNING: could not find loginsession for user with login={0}, id={1}'.format(self.login, self.id))
+         return '{0}|{1}'.format(IpEncode.encode('0.0.0.0'), self.getPersona().id)
+
+   def getClientPrefix(self, short=False):
+      ## follows RFC prefix BNF, but with encIp,gsProf
+      if short:
+         ## sometimes this has '*' in place of 2nd and 3rd parts of string
+         return '{0}!{1}@{2}'.format(self.getPersona().name, '*', '*')
+      else:
+         ## pretty sure part after '@' (hostname) is always '*'
+         return '{0}!{1}@{2}'.format(self.getPersona().name, self.getIrcUserString(), '*')
+
 
 class PeerchatRealm(WordsRealm):
    def __init__(self):

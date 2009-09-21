@@ -58,18 +58,21 @@ class HeartbeatMaster(DatagramProtocol):
             )
          ## sometimes, messages come with just ip update info and no groupid or hostname. I'm assuming the 4byte id is used to identify the session.
          if 'groupid' not in info:
-            self.log.debug('weird msg from {0}:{1}'.format(host, port))
+            self.log.debug('weird msg from {0}:{1} -- {2}'.format(host, port, repr(data)))
+            session = db.MasterGameSession.objects.get(clientId=clientId)
          else:
             try:
                session = db.MasterGameSession.objects.get(hostname=info['hostname'])
             except db.MasterGameSession.DoesNotExist, ex:
                session = db.MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
-            ## TODO: better way to do this? i want to just do session.update(info)
-            for k, v in info.iteritems():
-               if k == 'publicip': ## this comes as BE int string
-                  v = inet_ntoa(struct.pack('<L', int(v))) ## assume the client behaved badly and took a BE int and read it as LE
-               setattr(session, k, v)
-            session.save()
+
+         ## TODO: better way to do this? i want to just do session.update(info)
+         for k, v in info.iteritems():
+            if k == 'publicip': ## this comes as BE int string
+               v = inet_ntoa(struct.pack('<L', int(v))) ## assume the client behaved badly and took a BE int and read it as LE
+            setattr(session, k, v)
+         session.save()
+
       elif msgId == MasterMsg.CHALLENGE_RESPONSE:
          self.log.debug('TODO: chall resp is always accepted, currently.')
          ## send the acknowledgment
@@ -228,8 +231,8 @@ class QueryMaster(Protocol):
          for session in db.MasterGameSession.objects.filter(channel__id=groupId):
             for ndx in range(4):
                localIp = getattr(session, 'localip{0}'.format(ndx))
-               if localIp.startswith('192'):
-                  print('selecting', localIp)
+               if localIp.startswith('192.168.'):
+                  #print('selecting', localIp)
                   break
             response += ('~'
                ## game channel name is based off of some or all of this info!

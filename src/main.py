@@ -67,7 +67,7 @@ servers = {
       ('redalert3pc.ms1.gamespy.com', None),
       ('psweb.gamespy.com', None),
    ],
-   # Need for Speed SHIFT (pro shift 2)
+   # Need for Speed SHIFT (a.k.a. pro street 2)
    'ea.games.nfsps2.Service':[
       ('nfsps2-pc.fesl.ea.com', 18201),
       ('nfsps2-pc.theater.ea.com', 18202), # nomally 18206 FIXME: dont hardcode these relative port offsets

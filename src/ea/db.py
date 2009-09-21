@@ -84,16 +84,6 @@ def getPersona(self):
    return self.persona_set.get(selected=True)
 models.User.getPersona = getPersona
 
-def getIrcUserString(self):
-   'returns the encoded ip and profile id of this user'
-   # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
-   try:
-      return '{0}|{1}'.format(IpEncode.encode(self.loginsession.extIp), self.getPersona().id)
-   except self.DoesNotExist, ex:
-      print('WARNING: could not find loginsession for user with login={0}, id={1}'.format(self.login, self.id))
-      return '{0}|{1}'.format(IpEncode.encode('0.0.0.0'), self.getPersona().id)
-models.User.getIrcUserString = getIrcUserString
-
 class Persona(models.Persona):
    __metaclass__ = djProxy
 
