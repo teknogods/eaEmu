@@ -618,9 +618,8 @@ class ProxyPeerchatServerFactory(ProxyFactory):
       return p
 
 ##TODO: make a generic logging aspect for all Protocol objects to capture receives and sends and log based on module name
+@aspects.Aspect(Peerchat)
 class PeerchatEncryption(object):
-   __metaclass__ = aspects.Aspect(Peerchat)
-
    def connectionMade(self):
       self.doCrypt = False
       yield aspects.proceed

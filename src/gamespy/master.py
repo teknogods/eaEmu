@@ -290,9 +290,8 @@ class QueryMaster(Protocol):
          '\x00\xff\xff\xff\xff'
       )
 
+@aspects.Aspect(QueryMaster)
 class QueryMasterEncryption(object):
-   __metaclass__ = aspects.Aspect(QueryMaster)
-
    def connectionMade(self):
       yield aspects.proceed
       def writeWrap(self_transport, data):
