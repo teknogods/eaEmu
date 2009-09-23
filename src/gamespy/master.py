@@ -62,9 +62,12 @@ class HeartbeatMaster(DatagramProtocol):
             session = db.MasterGameSession.objects.get(clientId=clientId)
          else:
             try:
+               ## HACK: grab old instance, if it exists
                session = db.MasterGameSession.objects.get(hostname=info['hostname'])
             except db.MasterGameSession.DoesNotExist, ex:
-               session = db.MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
+               ## create new session
+               session = db.MasterGameSession.objects.create(hostname=info['hostname'], channel=db.Channel.objects.get(id=info['groupid']))
+            session.clientId = clientId
 
          ## TODO: better way to do this? i want to just do session.update(info)
          for k, v in info.iteritems():

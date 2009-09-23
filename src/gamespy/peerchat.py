@@ -18,7 +18,7 @@ import db
 from cipher import *
 import aspects2 as aspects
 
-class Peerchat(IRCUser):
+class Peerchat(IRCUser, object):
    def connectionMade(self):
       IRCUser.connectionMade(self)
       self.log  = logging.getLogger('gamespy.peerchat.{0.host}:{0.port}'.format(self.transport.getPeer()))
@@ -32,20 +32,20 @@ class Peerchat(IRCUser):
          line = line.strip('\r')
          if line:
             self.log.debug('recv IRC: {0}'.format(repr(line)))
-      IRCUser.dataReceived(self, data)
+      super(type(self), self).dataReceived(data)
 
    def sendLine(self, line):
       self.log.debug('send IRC: {0}'.format(repr(line)))
-      ## peerchat doesn't send \r, as this does, but shouldn't matter
-      #IRCUser.sendLine(self, line)
-      self.transport.write(line + '\n')
+      ## real peerchat doesn't send \r, as this does, but shouldn't matter
+      super(type(self), self).sendLine(line)
+      #self.transport.write(line + '\n')
 
    # TODO: enumerate GS cmd ids and use more meaningful names
    def irc_CRYPT(self, prefix, params):
       pass ## this will be handled by aspects, if at all
 
    def irc_USRIP(self, prefix, params):
-      self.sendMessage('302', '', ':=+@{0}'.format(self.transport.getPeer().host), prefix='s')
+      self.sendMessage('302', '', ':=+@{0}'.format(self.transport.getPeer().host))
 
    def irc_USER(self, prefix, params):
       #'XflsaqOa9X|165580976' is encodedIp|GSProfileId aka persona, '127.0.0.1', 'peerchat.gamespy.com', 'a69b3a7a0837fdcd763fdeb0456e77cb' is cdkey
@@ -97,14 +97,14 @@ class Peerchat(IRCUser):
    ## IChatClient implementation
    def userJoined(self, group, client):
       self.join(
-         client.avatar.getClientPrefix(),
+         client.avatar.getClientPrefix('JOIN'),
          '#' + group.name)
 
 
    def userLeft(self, group, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
       self.part(
-         client.avatar.getClientPrefix(),
+         client.avatar.getClientPrefix('PART'),
          '#' + group.name,
          (reason or u'').encode(self.encoding, 'replace'))
 
@@ -124,19 +124,11 @@ class Peerchat(IRCUser):
 
       text = message.get('text', '<an unrepresentable message>')
       for line in text.splitlines():
-         if 'prefix' in message:
-            prefix = message['prefix']
-         else:
-            prefix = sender.avatar.getClientPrefix()
-         if 'command' in message:
-            self.sendLine(":{0} {1} {2} :{3}".format(prefix, message['command'],
-                                                     recipientName, lowQuote(line)))
-         else:
-            ## this is pretty much same as above but with PRIVMSG as command
-            self.privmsg(
-               prefix,
-               recipientName,
-               line)
+         if 'command' not in message:
+            assert False, 'need key: "command"'
+         prefix = message.get('prefix', sender.avatar.getClientPrefix(message['command']))
+         self.sendLine(":{0} {1} {2} :{3}".format(prefix, message['command'],
+                                                  recipientName, lowQuote(line)))
 
    def aliasOfPrivmsg(command):
       def method (self, prefix, params):
@@ -153,10 +145,8 @@ class Peerchat(IRCUser):
          def cbTarget(targ):
             if targ is not None:
                msg = {'text':messageText, 'command':command}
-               if command == 'UTM' and 'NAT' not in messageText: ## a HACK that may be unnecessary
-                  msg['prefix'] = self.avatar.getClientPrefix(short=True) ## send long prefix for NAT commands
-               elif command == 'UTM' and 'SCD' in messageText: ## HACK to not send SCD
-                  return
+               if command == 'UTM' and 'NAT' in messageText: ## a HACK that seems unnecessary
+                  msg['prefix'] = self.avatar.getClientPrefix(short=False) ## send long prefix for UTM NAT commands
                return self.avatar.send(targ, msg)
 
          def ebTarget(err):
@@ -171,8 +161,9 @@ class Peerchat(IRCUser):
                self.realm.lookupUser(name).addCallback(lambda user: user.mind).addCallbacks(cbTarget, ebTarget)
       return method
 
+   irc_PRIVMSG = aliasOfPrivmsg('PRIVMSG') ## just for consistency's sake, redefine here
    irc_UTM = aliasOfPrivmsg('UTM')
-   irc_NOTICE = aliasOfPrivmsg('NOTICE')
+   irc_NOTICE = aliasOfPrivmsg('NOTICE') ## TODO: irc_NOTICE not defined in IRCUser though notice() is?!
 
    def irc_WHO(self, prefix, params):
       pass
@@ -484,8 +475,12 @@ class DbUser(db.User):
          print('WARNING: could not find loginsession for user with login={0}, id={1}'.format(self.login, self.id))
          return '{0}|{1}'.format(IpEncode.encode('0.0.0.0'), self.getPersona().id)
 
-   def getClientPrefix(self, short=False):
-      ## follows RFC prefix BNF, but with encIp,gsProf
+   def getClientPrefix(self, command=None, short=True):
+      '''
+      follows RFC prefix BNF, but with encIp,gsProf
+      '''
+      if command in ['JOIN', 'PART']:
+         short = False
       if short:
          ## sometimes this has '*' in place of 2nd and 3rd parts of string
          return '{0}!{1}@{2}'.format(self.getPersona().name, '*', '*')
