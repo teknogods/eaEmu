@@ -69,7 +69,7 @@ class HeartbeatMaster(DatagramProtocol):
                ## create new session
                session = db.MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
 
-         ## TODO: better way to do this? i want to just do session.update(info)
+         ## update and save the info
          for k, v in info.iteritems():
             if k == 'publicip': ## this comes as BE int string
                v = inet_ntoa(struct.pack('<L', int(v))) ## assume the client behaved badly and took a BE int and read it as LE

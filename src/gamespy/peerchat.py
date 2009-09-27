@@ -1,5 +1,6 @@
 from __future__ import print_function
 import logging
+import re
 
 from twisted.words.protocols import irc
 from twisted.words.protocols.irc import lowQuote
@@ -18,6 +19,26 @@ import db
 from cipher import *
 import aspects2 as aspects
 
+def dumpFields(self, fields, withNames=False):
+   fieldVals = {}
+   for fld in fields:
+      if fld == 'username':
+         ## this is pretty HACKy, but needed cuz i dont want to do a db query for the DbUser version
+         ## of this object
+         fieldVals[fld] = DbUser.__dict__['getIrcUserString'](self.persona.user)
+      elif fld == 'b_arenaTeamID':
+         val = getattr(self, fld)
+         fieldVals[fld] = val and val.id or 0 # use zero if field is null (very rare case)
+      else:
+         fieldVals[fld] =getattr(self, fld, None) or '' ## None's become ''
+
+   return ':\\' + '\\'.join(sum(
+                                [[k, str(fieldVals[k])] for k in fields] if withNames else
+                                [[str(fieldVals[k])] for k in fields],
+                                []
+   ))
+db.Stats.dumpFields = dumpFields
+
 class Peerchat(IRCUser, object):
    def connectionMade(self):
       IRCUser.connectionMade(self)
@@ -26,6 +47,7 @@ class Peerchat(IRCUser, object):
       ## some HACKS for IRCUser compat
       self.name = '*' ## need this since user hasn't logged in yet
       self.password = '' ## FIXME, TODO: remove once auth process fixed
+      self.hostname = 's'
 
    def dataReceived(self, data):
       for line in data.split('\n'):
@@ -83,6 +105,13 @@ class Peerchat(IRCUser, object):
 
       IRCUser.irc_NICK(self, prefix, params) ## sends _welcomeMessage
 
+   ##TODO: support channel ops and make hosts ops in their lobby channels
+   '''
+   def names(self, user, channel, names):
+      names = [('@'+n) if n == 'Jackalus' else n for n in names] ## SUPER HACK
+      super(type(self), self).names(user, channel, names)
+   '''
+
    def irc_CDKEY(self, prefix, params):
       self.sendMessage('706', '1', ':Authenticated')
 
@@ -127,8 +156,9 @@ class Peerchat(IRCUser, object):
          if 'command' not in message:
             assert False, 'need key: "command"'
          prefix = message.get('prefix', sender.avatar.getClientPrefix(message['command']))
-         self.sendLine(":{0} {1} {2} :{3}".format(prefix, message['command'],
-                                                  recipientName, lowQuote(line)))
+         self.sendLine(":{0} {1} {2} {3}".format(prefix, message['command'],
+                                                 recipientName,
+                                                 line if 'raw' in message else ':'+lowQuote(line)))
 
    def aliasOfPrivmsg(command):
       def method (self, prefix, params):
@@ -194,16 +224,9 @@ class Peerchat(IRCUser, object):
          for user in users:
             # TODO: add get_username getter to Stats, once properties are supported, to fetch the ircUser string
             #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
-            response = ':'
             uName = user.getPersona().name
-            stats = db.Stats.objects.get_or_create(persona=user.getPersona(), game=db.Game.objects.get(name='redalert3pc'))[0] # TODO, FIXME
-            for f in fields:
-               if f == 'username':
-                  response += '\\{0}'.format(user.getIrcUserString())
-               elif f == 'b_arenaTeamID':
-                  response += '\\{0}'.format(getattr(stats, f).id)
-               else:
-                  response += '\\{0}'.format(getattr(stats, f))
+            stats = db.Stats.objects.get_or_create(persona=user.getPersona(), channel=db.Channel.objects.get(name=grp))[0] #TODO: defer
+            response = stats.dumpFields(fields)
             self.sendMessage('702', chan, uName, rId, response)
          self.sendMessage('703', chan, rId, ':End of GETCKEY')
          # 702 = RPL_GETCKEY? -- not part of RFC 1459
@@ -212,40 +235,50 @@ class Peerchat(IRCUser, object):
 
    def irc_SETCKEY(self, prefix, params):
       chan, nick, fields = params
-      fields  = fields.split('\\')[1:]
-      changes = dict(zip(fields[::2], fields[1::2]))
-      fields = fields[::2]
+      assert nick == self.avatar.name
+      tokens  = fields.split('\\')[1:]
+      changes = dict(zip(tokens[::2], tokens[1::2]))
+      changes = dict((k, v if v != '' else None) for k, v in changes.iteritems()) ## change blanks to nulls
+      fields = tokens[::2] ## define this to maintain ordering
 
       grp = unicode(chan[1:])
 
-      ## save to db
-      ## TODO: defer this to thread
-      changes = dict((k, v) for k, v in changes.iteritems() if v) ## remove nulls
-      if 'b_arenaTeamID' in changes:
-         changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
-      stats = db.Stats.objects.get_or_create(persona=self.avatar.getPersona(), game=db.Game.objects.get(name='redalert3pc'))[0] # TODO, FIXME
-      db.Stats.objects.filter(id=stats.id).update(**changes)
+      def saveToDb():
+         if 'b_arenaTeamID' in changes:
+            changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
+         stats = db.Stats.objects.get_or_create(persona=self.avatar.getPersona(), channel=db.Channel.objects.get(name=grp))[0]
+         for k, v in changes.iteritems(): setattr(stats, k, v)
+         stats.save()
+         return stats
+
 
       def ebGroup(err):
          err.trap(ewords.NoSuchGroup)
          pass ## TODO
 
-      def cbGroup(group):
-         ## broadcast the change
-         for user in group.users.exclude(id=self.avatar.id):
-            response = ':'
-            for f in fields:
-               response += '\\{0}'.format(f)
-               if f == 'username':
-                  response += '\\{0}'.format(user.getIrcUserString())
-               elif f == 'b_arenaTeamID':
-                  response += '\\{0}'.format(getattr(stats, f).id)
-               else:
-                  response += '\\{0}'.format(getattr(stats, f))
-            self.sendMessage('702', chan, self.avatar.name, 'BCAST', response, to=chan)
+      def respond(results):
+         successes = [x[0] for x in results]
+         stats, group = [x[1] for x in results]
+         if not all(successes):
+            return ## TODO: log this / raise exc
+         response = stats.dumpFields(fields, withNames=True)
 
-      ## TODO: assert that user is self!!
-      self.realm.lookupGroup(grp).addCallbacks(cbGroup, ebGroup)
+         ## BCAST - broadcast the change
+         ## general format of 702 message is:
+         ## :s 702 <target chan> <scope of flags (chan)> <nick> <request id or BCAST> :<flags>
+         ## TODO XXX : make func to send 702 results, separate from send() and receive(),
+         ## those should be reserved for privmsg type commands
+         msg = {'command':'702',
+                'text':' '.join([chan, nick, 'BCAST', response]),
+                'raw':True,
+                'prefix':self.hostname,
+               } ## very HACKy -- several spots for this hack
+         self.avatar.send(group, msg)
+         ## also send BCAST to self (group send normally excludes self)
+         self.receive(self, group, msg)
+
+      defer.DeferredList([threads.deferToThread(saveToDb),
+                          self.realm.lookupGroup(grp).addErrback(ebGroup)]).addCallback(respond)
 
 
    def _sendTopic(self, group):
@@ -290,13 +323,20 @@ class Peerchat(IRCUser, object):
 
       self.realm.lookupGroup(channel).addCallbacks(cbGroup, ebGroup)
 
-   def _channelMode(self, group, modes=None, *args): ## what can args be?
-      if modes:
-         self.sendMessage(
-            irc.ERR_UNKNOWNMODE,
-            ":Unknown MODE flag.")
-      else:
-         self.channelMode(self.name, '#' + group.name, group.mode)
+   def _channelMode(self, group, modes=None, *args): ## args is whatever's after flags (usually slots)
+      if modes: ## TODO: check for op status
+         ## TODO: is this the correct way to combine the changes?
+         mode = group.mode.split(' ')[0].strip('+-')
+         for match in re.finditer('([+-])(\w)', modes):
+            sign, flag = match.groups()
+            if sign == '+':
+               mode = ''.join(set(mode + flag))
+            else:
+               mode = ''.join(set(mode) - set(flag))
+         group.mode = '+'+' '.join((mode,) + args)
+         group.save()
+      #self.sendMessage( irc.ERR_UNKNOWNMODE, ":Unknown MODE flag.")
+      self.channelMode(self.name, '#' + group.name, group.mode)
 
    def _userMode(self, user, modes=None):
       if modes:
@@ -405,8 +445,6 @@ class DbGroup(db.Channel):
    def receive(self, sender, recipient, message):
       assert recipient is self
       receives = []
-      #print('users receiving: {0} message: {1}'.format([u.login for u in self.users.exclude(id=sender.avatar.id)], message))
-      #print('users in my map: {0} message: {1}'.format([c.avatar.login for c in self.clients.values()], message))
       for usr in self.users.exclude(id=sender.avatar.id):
          usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
          clt = usr.mind
@@ -419,7 +457,7 @@ class DbGroup(db.Channel):
       return defer.succeed(None)
 
 
-## TODO: check that interfac is fully implemented
+## TODO: check that interface is fully implemented
 class DbUser(db.User):
    implements(iwords.IUser)
 

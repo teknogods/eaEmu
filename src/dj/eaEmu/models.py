@@ -158,21 +158,21 @@ class Persona(models.Model) :
 
 
 class Stats(models.Model) :
-    persona = models.OneToOneField(Persona)
-    game = models.ForeignKey(Game)
-    b_flags = models.CharField(max_length=32, blank=True, default='' )
-    b_clanName = models.CharField(max_length=64, blank=True, default='' )
-    b_arenaTeamID = models.ForeignKey(ArenaTeam,default=0)
-    b_locale = models.IntegerField(default=0)
-    b_wins = models.IntegerField(default=0)
-    b_losses = models.IntegerField(default=0)
-    b_rank1v1 = models.IntegerField(default=-1)
-    b_rank2v2 = models.IntegerField(default=-1)
-    b_clan1v1 = models.IntegerField(default=-1)
-    b_clan2v2 = models.IntegerField(default=-1)
-    b_elo1v1 = models.IntegerField(default=-1)
-    b_elo2v2 = models.IntegerField(default=-1)
-    b_onlineRank = models.IntegerField(default=1)
+    channel = models.ForeignKey(Channel)
+    persona = models.ForeignKey(Persona)
+    b_flags = models.CharField(max_length=32, null=True )
+    b_clanName = models.CharField(max_length=64, null=True )
+    b_arenaTeamID = models.ForeignKey(ArenaTeam,null=True)
+    b_locale = models.IntegerField(null=True)
+    b_wins = models.IntegerField(null=True)
+    b_losses = models.IntegerField(null=True)
+    b_rank1v1 = models.IntegerField(null=True)
+    b_rank2v2 = models.IntegerField(null=True)
+    b_clan1v1 = models.IntegerField(null=True)
+    b_clan2v2 = models.IntegerField(null=True)
+    b_elo1v1 = models.IntegerField(null=True)
+    b_elo2v2 = models.IntegerField(null=True)
+    b_onlineRank = models.IntegerField(null=True)
 
     def __unicode__(self):
         return u""
