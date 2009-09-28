@@ -94,6 +94,11 @@ class ProxyMasterClient(ProxyClient):
       dec = self.peer.decoder.Decode(data)
       if dec:
          self.factory.log.debug('decoded: '+ repr(dec))
+         if '~' in dec:
+            from socket import *
+            tokens = dec.split('~')
+            for sub in tokens[1:]:
+               self.factory.log.debug('ips: {0}'.format([inet_ntoa(x) for x in [sub[:4], sub[6:][:4], sub[12:][:4]]]))
       ProxyClient.dataReceived(self, data)
 
 class ProxyMasterClientFactory(ProxyClientFactory):
@@ -241,7 +246,6 @@ class QueryMaster(Protocol):
                ## game channel name is based off of some or all of this info!
                ## TODO: RE that hash
 
-               #+ struct.pack('L', session.publicip) ## publicip is already a big endian long, so pack in host order
                + inet_aton(session.publicip)
                + struct.pack('!H', session.publicport)
                ## FIXME?: local host and port determine the channel hash. is there always an ip3? pick highest if there isnt??

@@ -377,14 +377,14 @@ class EaMsgHlr_GameSpyPreAuth(MessageHandler):
    def makeReply(self):
       import random, string
       chal = ''.join(random.choice(string.ascii_lowercase) for _ in range(8))
-      chal = 'rkoqlbdc' # paired with ticket
+      #chal = 'rkoqlbdc' ## paired with ticket, below
       self.server.session.key = chal
       self.server.session.save()
       return self.msg.makeReply({
          'challenge': chal,
-         # this base64 string is incorrectly padded -- lacks 1 base64 character it seems.
-         # this is the authToken that the client will send to gpcm.gamespy.com soon after this transaction completes.
-         # it may or may not be decodable by or meaningful to the client
+         ## this base64 string is incorrectly padded -- lacks 1 base64 character it seems.
+         ## this is the authToken that the client will send to gpcm.gamespy.com soon after this transaction completes.
+         ## it may or may not be decodable by or meaningful to the client
          #'ticket':'CCUNTxOjYkDHJuDB9h0fw/skLy+s9DUCol1LFKmjk7Rc6/suwmWbFsKXbdZ1uZoEoQo7jHwlW7ZVw5FidVhdX8Yaw==',
          ## HACK, TODO: use login name instead of ticket so that gpcm knows who we are:
          ## this is vulnerable to impersonation since we trust the gpcm login msg isnt spoofed

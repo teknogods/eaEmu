@@ -61,8 +61,12 @@ class Service(MultiService):
       MultiService.__init__(self)
       sCtx = OpenSSLContextFactoryFactory.getFactory('EA')
 
+      ## TODO: merge all port 80 services somehow? 1 handler that dispatches depending on request?
       self.addService(TCPServer(8001, gamespy.sake.SakeServer()))
       self.addService(TCPServer(8002, gamespy.downloads.DownloadsServerFactory()))
+      ## TODO: psweb.games.py.com -- SOAP service that serves Clan-related requests
+      ## TODO: redalert3services.gamespy.com -- HTTP GET requests that serve rank icons
+
       self.addService(UDPServer(27900, gamespy.master.HeartbeatMaster()))
 
       address = ('cncra3-pc.fesl.ea.com', 18840)

@@ -287,33 +287,22 @@ class Peerchat(IRCUser, object):
       '''
       topic = group.topic
       if topic:
-         #author = group.meta.get("topic_author") or "<noone>"
-         author = "<noone>"
-         #date = group.meta.get("topic_date", 0)
+         author = "<noone>" ## TODO
          date = 0
          self.topic(self.name, '#' + group.name, topic)
          self.topicAuthor(self.name, '#' + group.name, author, date)
 
    def _setTopic(self, channel, topic):
-      #<< TOPIC #divunal :foo
-      #>> :glyph!glyph@adsl-64-123-27-108.dsl.austtx.swbell.net TOPIC #divunal :foo
-
       def cbGroup(group):
-         newMeta = {}#group.meta.copy()
-         newMeta['topic'] = topic
-         newMeta['topic_author'] = self.name
-         from time import time
-         newMeta['topic_date'] = int(time())
-
          def ebSet(err):
             self.sendMessage(
                irc.ERR_CHANOPRIVSNEEDED,
                "#" + group.name,
                ":You need to be a channel operator to do that.")
 
+         group.topic = topic
+         group.save() ## TODO: defer
          return defer.succeed(None)
-         ## FIXME
-         #return group.setMetadata(newMeta).addErrback(ebSet)
 
       def ebGroup(err):
          err.trap(ewords.NoSuchGroup)

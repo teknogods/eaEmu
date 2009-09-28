@@ -62,10 +62,10 @@ servers = {
       #('servserv.generals.ea.com', 80), # this is used in 1.0
       ('peerchat.gamespy.com', 6667),
       ('gpcm.gamespy.com', 29900),
-      ('redalert3services.gamespy.com', None),
-      ('redalert3pc.sake.gamespy.com', None),
-      ('redalert3pc.ms1.gamespy.com', None),
-      ('psweb.gamespy.com', None),
+      ('redalert3pc.ms1.gamespy.com', 28910),
+      ('redalert3services.gamespy.com', 80),
+      ('redalert3pc.sake.gamespy.com', 80),
+      ('psweb.gamespy.com', 80),
    ],
    # Need for Speed SHIFT (a.k.a. pro street 2)
    'ea.games.nfsps2.Service':[
