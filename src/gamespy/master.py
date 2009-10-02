@@ -19,6 +19,12 @@ class MasterMsg(Enum):
    AVAILABLE          = 0x09
    RESPONSE_CORRECT   = 0x0A
 
+for obj in db.MasterGameSession.objects.all(): obj.delete() ## HACK, TODO
+
+#class HeartbeatMasterProxy(DatagramProtocol):
+   #def datagramReceived(self, data, (host, port)):
+
+
 class HeartbeatMaster(DatagramProtocol):
    '''
    This fulfills the role of both redalert3pc.available.gamespy.com and redalert3pc.master.gamespy.com.
@@ -254,9 +260,9 @@ class QueryMaster(Protocol):
                ## i think it might be the first class C address in list of local ips?
                + inet_aton(localIp)
                + struct.pack('!H', session.localport)
-               #+ struct.pack('L', session.publicip) ##  some other related external ip -- sometimes dupe of external
                + inet_aton(session.publicip) ##  some other related external ip -- sometimes dupe of external
              )
+            print('public={0} private={1}'.format((session.publicip, session.publicport), (localIp, session.localport)))
             response += ''.join('\xff{0}\x00'.format(getattr(session, f.rstrip('_'))) for f in msg['fields'])
          response += '\x00'
          response += '\xff'*4

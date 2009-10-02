@@ -589,7 +589,7 @@ class CipherProxy:
       log = logging.getLogger('gamespy.chatCli') #HACKy
       log.debug('received: '+repr(unenc))
       if 'Unknown CD Key' in unenc:
-         unenc = re.sub(r'(:s 706 \w+) .*', r'\1 1 :Authenticated', unenc)
+         unenc = re.sub(r'(:s 706 \S+) .*', r'\1 1 :Authenticated', unenc)
          log.debug('but sending this instead: %s', unenc)
       return self.serverEgress.crypt(unenc)
 
