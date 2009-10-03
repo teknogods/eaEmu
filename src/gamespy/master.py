@@ -104,7 +104,8 @@ class ProxyMasterClient(ProxyClient):
             from socket import *
             tokens = dec.split('~')
             for sub in tokens[1:]:
-               self.factory.log.debug('ips: {0}'.format([inet_ntoa(x) for x in [sub[:4], sub[6:][:4], sub[12:][:4]]]))
+               if len(sub) >= 16:
+                  self.factory.log.debug('ips: {0}'.format([inet_ntoa(x) for x in [sub[:4], sub[6:][:4], sub[12:][:4]]]))
       ProxyClient.dataReceived(self, data)
 
 class ProxyMasterClientFactory(ProxyClientFactory):
