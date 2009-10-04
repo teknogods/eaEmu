@@ -19,11 +19,8 @@ class MasterMsg(Enum):
    AVAILABLE          = 0x09
    RESPONSE_CORRECT   = 0x0A
 
-for obj in db.MasterGameSession.objects.all(): obj.delete() ## HACK, TODO
-
 #class HeartbeatMasterProxy(DatagramProtocol):
    #def datagramReceived(self, data, (host, port)):
-
 
 class HeartbeatMaster(DatagramProtocol):
    '''
@@ -64,7 +61,7 @@ class HeartbeatMaster(DatagramProtocol):
             )
          ## sometimes, messages come with just ip update info and no groupid or hostname. I'm assuming the 4byte id is used to identify the session.
          if 'groupid' not in info:
-            self.log.debug('weird msg from {0}:{1} -- {2}'.format(host, port, repr(data)))
+            #self.log.debug('weird msg from {0}:{1} -- {2}'.format(host, port, repr(data)))
             session = db.MasterGameSession.objects.get(clientId=clientId)
          else:
             try:
@@ -244,6 +241,10 @@ class QueryMaster(Protocol):
       if match:
          groupId = match.group(1)
          for session in db.MasterGameSession.objects.filter(channel__id=groupId):
+            ## prune any stale entries
+            if session.updated < datetime.now() - timedelta(minutes=5):
+               session.delete()
+               continue
             for ndx in range(4):
                localIp = getattr(session, 'localip{0}'.format(ndx))
                if localIp.startswith('192.168.'):

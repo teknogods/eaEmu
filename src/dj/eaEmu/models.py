@@ -44,6 +44,7 @@ class Channel(models.Model) :
 class MasterGameSession(models.Model) :
     clientId = models.DecimalField(max_digits=10, decimal_places=0, unique=True)
     channel = models.ForeignKey(Channel)
+    updated = models.DateTimeField(auto_now=True)
     hostname = models.CharField(max_length=30, blank=True, default='' )
     gamemode = models.CharField(max_length=20, blank=True, default='' )
     mapname = models.CharField(max_length=200, blank=True, default='' )

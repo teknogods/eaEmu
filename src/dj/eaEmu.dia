@@ -3034,19 +3034,19 @@
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O14">
       <dia:attribute name="obj_pos">
-        <dia:point val="58.455,3.15022"/>
+        <dia:point val="57.455,5.20022"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="58.405,3.10022;85.955,30.8002"/>
+        <dia:rectangle val="57.405,5.15022;84.955,33.6502"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="58.455,3.15022"/>
+        <dia:point val="57.455,5.20022"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
         <dia:real val="27.449999999999999"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
-        <dia:real val="27.600000000000012"/>
+        <dia:real val="28.400000000000013"/>
       </dia:attribute>
       <dia:attribute name="name">
         <dia:string>#MasterGameSession#</dia:string>
@@ -3168,6 +3168,29 @@
           </dia:attribute>
           <dia:attribute name="value">
             <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#updated#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#datetime#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#auto_now=True#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
