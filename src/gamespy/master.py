@@ -170,6 +170,7 @@ class QueryMaster(Protocol):
       if msg['request'].startswith('\\hostname'):
          self.handle_getRooms(msg)
       elif msg['request'].startswith('(groupid'):
+         #print('got game request: {0} | {1}'.format(msg['request'], msg['fields']))
          self.handle_getGames(msg)
 
    def makeFieldList(self, fields):
@@ -193,64 +194,35 @@ class QueryMaster(Protocol):
       '\\hostname\\gamemode\\hostname\\mapname\\gamemode\\vCRC\\iCRC\\cCRC\\pw\\obs\\rules\\pings\\numRPlyr\\maxRPlyr\\numObs\\mID\\mod\\modv\\name_\x00'
       '\x00\x00\x00\x04' # big endian 4? is this used as a continuation marker for next request?
 
-      ## TODO: handle this second query type as well as any others it might throw at
-      ## us in the request string and field list: "( blash = val) and (blah2 = val2)"
-      fields = (
-         ('hostname', 0),
-         ('mapname', 0),
-         ('numplayers', 1),
-         ('maxplayers', 1),
-         ('gamemode', 0),
-         ('vCRC', 0),
-         ('iCRC', 0),
-         ('pw', 1), # passworded?
-         ('obs', 1),
-         ('rules', 0),
-         ('pings', 0),
-         ('numRPlyr', 1),
-         ('maxRPlyr', 1),
-         ('numObs', 1),
-         ('name', 0),
-         ('cCRC', 0),
-         ('mID', 0),
-         ('mod', 0),
-         ('modv', 0),
-         ('teamAuto', 1),
-         ('joinable', 1),
-      )
-
-      data = '\x01' + self.makeFieldList(fields)
-      self.sendMsg(struct.pack('!H', len(data)) + data)
-
+      ## TODO: handle queries generically, given to us in the format
+      ## "(blah = val) and (blah2 = val2)"
       '''
-      ## TODO: dynamically determine whether to use these and pick fields dynamically
-      ## to do this, do select top 5 distinct col or something to find most frequent values among col
-      immediateValueKeys = [
-         'pw', ## TODO: pwd is '0' for disabled? what does 5 mean??
-         'obs',
-         'numRPlyr',
-         'maxRPlyr',
-         'numObs',
-         'teamAuto',
-         'joinable',
-      ]
+      epList = []
       match = re.match(r'\(groupid=(.*?)\)', msg['request'])
       ep = self.transport.getPeer()
       response = inet_aton(ep.host) + struct.pack('!H', ep.port)
       response += self.makeFieldList([(f, 0) for f in msg['fields']])
+      ## TODO: dynamically determine whether to use these and pick fields dynamically
+      ## to do this, do select top 5 distinct col or something to find most frequent values among col
       response += '\0' ## TODO : use vals list
       if match:
          groupId = match.group(1)
          for session in db.MasterGameSession.objects.filter(channel__id=groupId):
-            ## prune any stale entries
-            if session.updated < datetime.now() - timedelta(minutes=5):
+            ## prune any stale entries that have had no updates for 2 mins
+            if session.updated < datetime.now() - timedelta(minutes=2):
                session.delete()
                continue
+
+            epList.append(inet_aton(session.publicip) + struct.pack('!H', session.publicport))
+
+            ## Use first class C ip as the local ip. This rule is guessed, but seems to always work.
             for ndx in range(4):
                localIp = getattr(session, 'localip{0}'.format(ndx))
                if localIp.startswith('192.168.'):
                   #print('selecting', localIp)
                   break
+            ## This first part of a gamelobby entry is used to create the room name's hash.
+            ## room name hash is based off of publicip, localip reported here (maybe ports too?)
             response += ('~'
                ## game channel name is based off of some or all of this info!
                ## TODO: RE that hash
@@ -268,8 +240,50 @@ class QueryMaster(Protocol):
             print('public={0} private={1}'.format((session.publicip, session.publicport), (localIp, session.localport)))
             response += ''.join('\xff{0}\x00'.format(getattr(session, f.rstrip('_'))) for f in msg['fields'])
          response += '\x00'
-         response += '\xff'*4
+         response += '\xff'*4 ## terminator for first part of the response
          self.sendMsg(response)
+         ## once this first response is sent, this server can continue to send
+         ## results one-by-one. To do this, it first sends a hdr msg in the format of:
+         ##   len of whole msg(BE-short),0x01,makeFieldList()-type list
+         ## then entries in format:
+         ##   BE-shortlen of whole msg,0x02,regular entry starting with '~...', then an extra \x00 terminator
+         ##     (thats 1 term for last value, 1 regular term as with first msg, then another null in place of FFFFFFFF for first msg)
+         ## these update lines must embed all strings (val list cannot be used as in first response)
+         ## TODO: sometimes these lines are even shorter, though, and dont begin with a '~'!
+         ## TODO: msg type 0x04, it updates ip of a game in the order it was sent -- BElen,0x04,ip,port
+
+         ## is this just a complete list of all fields?
+         fields = [
+            'hostname',
+            'mapname',
+            'numplayers',
+            'maxplayers',
+            'gamemode',
+            'vCRC',
+            'iCRC',
+            'pw',
+            'obs',
+            'rules',
+            'pings',
+            'numRPlyr',
+            'maxRPlyr',
+            'numObs',
+            'name',
+            'cCRC',
+            'mID',
+            'mod',
+            'modv',
+            'teamAuto',
+            'joinable',
+         ]
+         response = '\x01' + self.makeFieldList([(f,0) for f in fields]) ## TODO enum this 01
+         response = struct.pack('!H', len(response) + 2) + response
+         self.sendMsg(response)
+         for ep in epList:
+            response = '\x04' + ep
+            response = struct.pack('!H', len(response) + 2) + response
+            self.sendMsg(response)
+
 
    def handle_getRooms(self, msg):
       channels = db.Channel.objects.filter(game__name=self.factory.gameName, name__startswith='gpg')
@@ -286,8 +300,6 @@ class QueryMaster(Protocol):
             ('roomType', 0),
          )) +
          '\0' ## TODO: strings array goes here
-         # end part of entry seems to be like this:
-         # name,null,  (0x1-3 or 0xff,asciinums,null), 0x15,
          + ''.join(
                    ## TODO!!!!!!!
                    ## numwaiting < maxwaiting for client to be allowed to join?
@@ -299,11 +311,10 @@ class QueryMaster(Protocol):
                    '\xff0\x00' ##numwaiting
                    '\xff100\x00' ## maxwaiting
                    '\xff0\x00' ## numservers
-                   '\x00' ## numplayers
+                   '\x00' ## numplayers (immediate val as defined above)
                    '\xff1\x00' ## roomtype
-                   #'\x03\x15\x03\x07\x02'
-                   .format(struct.pack('!L', c.id), c.prettyName) for c in channels) +
-         '\x00\xff\xff\xff\xff'
+                  .format(struct.pack('!L', c.id), c.prettyName) for c in channels)
+         + '\x00\xff\xff\xff\xff'
       )
 
 @aspects.Aspect(QueryMaster)
