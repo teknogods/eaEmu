@@ -76,7 +76,7 @@ class HeartbeatMaster(DatagramProtocol):
          ## update and save the info
          for k, v in info.iteritems():
             if k == 'publicip': ## this comes as BE int string
-               v = inet_ntoa(struct.pack('<L', int(v))) ## assume the client behaved badly and took a BE int and read it as LE
+               v = inet_ntoa(struct.pack('<l', int(v))) ## assume the client behaved badly and took a BE int and read it as a signed LE
             setattr(session, k, v)
          session.save()
 
@@ -218,7 +218,7 @@ class QueryMaster(Protocol):
             ## Use first class C ip as the local ip. This rule is guessed, but seems to always work.
             for ndx in range(4):
                localIp = getattr(session, 'localip{0}'.format(ndx))
-               if localIp.startswith('192.168.'):
+               if localIp.startswith('192.168.') or localIp.startswith('10.'):
                   #print('selecting', localIp)
                   break
             ## This first part of a gamelobby entry is used to create the room name's hash.

@@ -512,8 +512,10 @@ class DbUser(db.User):
          ## sometimes this has '*' in place of 2nd and 3rd parts of string
          return '{0}!{1}@{2}'.format(self.getPersona().name, '*', '*')
       else:
-         ## pretty sure part after '@' (hostname) is always '*'
-         return '{0}!{1}@{2}'.format(self.getPersona().name, self.getIrcUserString(), '*')
+         ## very rarely (JOIN msgs on same local net?) is the last param an ip address.
+         ## most of the time it's just '*'
+         #return '{0}!{1}@{2}'.format(self.getPersona().name, self.getIrcUserString(), '*')
+         return '{0}!{1}@{2}'.format(self.getPersona().name, self.getIrcUserString(), self.mind.transport.getPeer().host)
 
 
 class PeerchatRealm(WordsRealm):
