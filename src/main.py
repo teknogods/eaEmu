@@ -66,6 +66,11 @@ servers = {
       ('redalert3services.gamespy.com', 80),
       ('redalert3pc.sake.gamespy.com', 80),
       ('psweb.gamespy.com', 80),
+      ('redalert3pc.auth.pubsvs.gamespy.com', 80),
+      ('redalert3pc.comp.pubsvs.gamespy.com', 80),
+      ('redalert3pc.natneg1.gamespy.com', 80),
+      ('redalert3pc.natneg2.gamespy.com', 80),
+      ('redalert3pc.natneg3.gamespy.com', 80),
    ],
    # Need for Speed SHIFT (a.k.a. pro street 2)
    'ea.games.nfsps2.Service':[

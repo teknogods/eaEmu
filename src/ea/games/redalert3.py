@@ -61,11 +61,13 @@ class Service(MultiService):
       MultiService.__init__(self)
       sCtx = OpenSSLContextFactoryFactory.getFactory('EA')
 
-      ## TODO: merge all port 80 services somehow? 1 handler that dispatches depending on request?
-      self.addService(TCPServer(8001, gamespy.sake.SakeServer()))
-      self.addService(TCPServer(8002, gamespy.downloads.DownloadsServerFactory()))
-      ## TODO: psweb.gamespy.com -- SOAP service that serves Clan-related requests
-      ## TODO: redalert3services.gamespy.com -- HTTP GET requests that serve rank icons
+      ## all port 80 services are currently merged into one server on 8001. apache must be set up to use rewriterules
+      ## and name-based  virtual hosting in order to redirect from port 80 to 8001
+      self.addService(TCPServer(8001, gamespy.webServices.WebServer()))
+
+      ## TODO: redalert3pc.natneg{1,2,3}.gamespy.com
+      ## This is a pretty simple service that allows 2 endpoints to udp punch thru their NAT routers.
+      ## Hosted on UDP port 27901.
 
       self.addService(UDPServer(27900, gamespy.master.HeartbeatMaster()))
 

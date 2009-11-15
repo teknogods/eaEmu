@@ -285,7 +285,10 @@ class PeerchatCipherFactory:
 class PeerchatCipher:
    @staticmethod
    def makeChallenge():
-      return ''.join(random.sample(r'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_|\<>[]{}=^@;?`', 16)) # TODO figure out this exact set
+      ## from ';' to '~' -- this is pretty close to exact range.
+      ## ':' at the beginning is def. not included (IRC significance)
+      alphabet = ''.join(chr(i) for i in range(ord(';'), ord('~')))
+      return ''.join(random.choice(alphabet) for _ in range(16))
 
    def __init__(self, challenge, gamekey):
       self.challenge = challenge

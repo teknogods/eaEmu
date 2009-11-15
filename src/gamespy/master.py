@@ -229,13 +229,12 @@ class QueryMaster(Protocol):
 
                + inet_aton(session.publicip)
                + struct.pack('!H', session.publicport)
-               ## FIXME?: local host and port determine the channel hash. is there always an ip3? pick highest if there isnt??
-               ## this may depend on what the master knows about the client's internal addresses -- it provides  the first that matches?
-               ## NO - the addr provided to clients must be the same as the one chosen by the host when it first joins the channel
-               ## i think it might be the first class C address in list of local ips?
                + inet_aton(localIp)
                + struct.pack('!H', session.localport)
-               + inet_aton(session.publicip) ##  some other related external ip -- sometimes dupe of external
+               ## This 3rd ip is the the host farthest along the route.
+               ## When all the hosts respond along the route, it's the same as the public ip.
+               ## I don't know how/if this is actually used by the game.
+               + inet_aton(session.publicip)
              )
             print('public={0} private={1}'.format((session.publicip, session.publicport), (localIp, session.localport)))
             response += ''.join('\xff{0}\x00'.format(getattr(session, f.rstrip('_'))) for f in msg['fields'])

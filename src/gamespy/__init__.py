@@ -1,11 +1,10 @@
 mods = [
    'available',
-   'downloads',
    'gpcm',
    'login',
    'master',
    'peerchat',
-   'sake',
+   'webServices',
 ]
 
 for m in mods:
