@@ -15,6 +15,7 @@ import OpenSSL
 from twisted.internet.protocol import Protocol
 from twisted.internet.ssl import DefaultOpenSSLContextFactory
 from twisted.internet.defer import Deferred
+from twisted.application.internet import TimerService
 
 from message import Message, MessageFactory
 from fwdserver import *
@@ -161,15 +162,19 @@ class EaCmd_MemCheck(Command):
       return self.response
 
    def receiveResponse(self, msg):
-      pass
+      pass ## TODO
 
-class EaCmd_Ping:
+class EaCmd_Ping(Command):
    def getResponse(self):
       msg = EaLoginMessage('fsys', 0, {'TXN':'Ping'}, transport=self.server.transport)
 
-      self.response = self.server.sendMessage(msg)
+      self.response = self.server.getResponse(msg)
+      self.response.addCallback(self.receiveResponse)
       # TODO: setTimeout on deferreds to drop connections that dont reply
       return self.response
+
+   def receiveResponse(self, msg):
+      pass ## TODO
 
 class EaServer(Protocol):
    '''
@@ -265,13 +270,15 @@ class EaMsgHlr_Hello(MessageHandler):
    def handle(self):
       self.Reply() #send initial reply
 
-      # send memcheck
-      d = EaCmd_MemCheck(self.server).getResponse()
-
-      #TODO: replace with service
-      #svc = TimerService(120, EaCmd_MemCheck(self.session).send)
+      ## start memcheck svc
+      svc = TimerService(120, EaCmd_MemCheck(self.server).getResponse)
       #FIXME!!!!#self.session.services.append(svc)
-      #svc.startService()
+      svc.startService()
+      ## start ping service
+      ## todo: should this start later on? once logged in?
+      svc = TimerService(120, EaCmd_Ping(self.server).getResponse)
+      #FIXME!!!!#self.session.services.append(svc)
+      svc.startService()
 
 class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identical, derive this from mercs one
    def makeReply(self):

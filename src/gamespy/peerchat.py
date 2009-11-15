@@ -14,6 +14,7 @@ from zope.interface import implements
 from twisted.internet import defer, threads
 from twisted.words import iwords
 from twisted.python import failure
+from twisted.application.internet import TimerService
 
 import db
 from cipher import *
@@ -39,6 +40,22 @@ def dumpFields(self, fields, withNames=False):
    ))
 db.Stats.dumpFields = dumpFields
 
+class IRCPingService(TimerService):
+   def __init__(self, client):
+      ## PING is sent 90s after no activity from client
+      TimerService.__init__(self, 90, self.sendPing)
+      self.client = client
+
+   def sendPing(self):
+      self.client.sendLine('PING :{0}'.format(self.client.hostname))
+
+   def recvPong(self):
+      self.reset()
+
+   def reset(self):
+      if hasattr(self, '_loop'):
+         self._loop._reschedule()
+
 class Peerchat(IRCUser, object):
    def connectionMade(self):
       IRCUser.connectionMade(self)
@@ -49,7 +66,14 @@ class Peerchat(IRCUser, object):
       self.password = '' ## FIXME, TODO: remove once auth process fixed
       self.hostname = 's'
 
+      self.pingService = IRCPingService(self)
+
+   def connectionLost(self, reason):
+      self.pingService.stopService()
+      IRCUser.connectionLost(self, reason)
+
    def dataReceived(self, data):
+      self.pingService.reset()
       for line in data.split('\n'):
          line = line.strip('\r')
          if line:
@@ -92,6 +116,7 @@ class Peerchat(IRCUser, object):
          # -- specify this better
          "%(serviceName)s %(serviceVersion)s w n"),
         ]
+
    def irc_NICK(self, prefix, params):
       # TODO: assert that this user has logged in to the main login server so that impersonation
       # isn't possible like it is for the real gamespy
@@ -114,6 +139,10 @@ class Peerchat(IRCUser, object):
 
    def irc_CDKEY(self, prefix, params):
       self.sendMessage('706', '1', ':Authenticated')
+      self.pingService.startService()
+
+   def irc_PONG(self, prefix, params):
+      self.pingService.recvPong()
 
    def irc_JOIN(self, prefix, params):
       ## TODO: make sure everything is send just like in original peerchat impl

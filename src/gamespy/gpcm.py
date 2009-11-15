@@ -1,15 +1,38 @@
 import logging
 
 from twisted.internet.protocol import ServerFactory
+from twisted.application.internet import TimerService
 
 from login import LoginServer
 from message import MessageFactory
 import db
 import cipher
 
-# i'm prettuy sure gpcm stands for GamesPy CoMrade
+class KeepAliveService(TimerService):
+   def __init__(self, client):
+      ## ka is sent 90s after no activity from client
+      TimerService.__init__(self, 90, self.sendKa)
+      self.client = client
 
+   def sendKa(self):
+      self.client.sendMsg(MessageFactory.getMessage([
+         ('ka', ''),
+      ]))
+
+   def reset(self):
+      if hasattr(self, '_loop'):
+         self._loop._reschedule()
+
+## i'm pretty sure gpcm stands for GamesPy CoMrade??
 class Comrade(LoginServer):
+   def connectionMade(self):
+      LoginServer.connectionMade(self)
+      self.kaService = KeepAliveService(self)
+
+   def connectionLost(self, reason):
+      LoginServer.connectionLost(self, reason)
+      self.kaService.stopService()
+
    def recv_login(self, msg):
       # receive this:
       # \login\
@@ -54,6 +77,8 @@ class Comrade(LoginServer):
          ('uniquenick', persona.name),         ('lt', lt),
          ('id', '1')
       ]))
+
+      self.kaService.startService()
 
       #HACKy way to maintain a list of all client connections
       if not hasattr(self.factory, 'conns'):
