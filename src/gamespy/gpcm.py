@@ -1,39 +1,19 @@
 import logging
+import random
 
 from twisted.internet.protocol import ServerFactory
-from twisted.application.internet import TimerService
 
 from login import LoginServer
 from message import MessageFactory
 import db
 import cipher
 
-class KeepAliveService(TimerService):
-   def __init__(self, client):
-      ## ka is sent 90s after no activity from client
-      TimerService.__init__(self, 90, self.sendKa)
-      self.client = client
-
-   def sendKa(self):
-      self.client.sendMsg(MessageFactory.getMessage([
-         ('ka', ''),
-      ]))
-
-   def reset(self):
-      if hasattr(self, '_loop'):
-         self._loop._reschedule()
-
 ## i'm pretty sure gpcm stands for GamesPy CoMrade??
 class Comrade(LoginServer):
-   def connectionMade(self):
-      LoginServer.connectionMade(self)
-      self.kaService = KeepAliveService(self)
-
-   def connectionLost(self, reason):
-      LoginServer.connectionLost(self, reason)
-      self.kaService.stopService()
-
    def recv_login(self, msg):
+      '''
+      This is an override of LoginServer's handler that's needed because of a slightly different login process.
+      '''
       # receive this:
       # \login\
       # \challenge\mDDSIHggE7HnWgcZhojg0CUsTVyDw4fV
@@ -65,8 +45,9 @@ class Comrade(LoginServer):
       self.sendMsg(MessageFactory.getMessage([('bdy', len(buddies)), ('list', ','.join(buddies))]))
 
       ## TODO: login ticket and session key should change every login
-      lt = 'XdR2LlH69XYzk3KCPYDkTY__'
-      sessKey = '171717' ## HACK, FIXME
+      #lt = 'XdR2LlH69XYzk3KCPYDkTY__'
+      lt = cipher.gs64encode(''.join(chr(random.getrandbits(8)) for _ in range(16)))
+      sessKey = random.getrandbits(16) ## HACK, FIXME
       self.sendMsg(MessageFactory.getMessage([
          ('lc', '2'),
          ('sesskey', sessKey),
@@ -78,6 +59,7 @@ class Comrade(LoginServer):
          ('id', '1')
       ]))
 
+      self.loggedIn = True
       self.kaService.startService()
 
       #HACKy way to maintain a list of all client connections

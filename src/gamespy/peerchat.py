@@ -50,9 +50,9 @@ class IRCPingService(TimerService):
       self.client.sendLine('PING :{0}'.format(self.client.hostname))
 
    def recvPong(self):
-      self.reset()
+      self.reschedule()
 
-   def reset(self):
+   def reschedule(self):
       if hasattr(self, '_loop'):
          self._loop._reschedule()
 
@@ -73,7 +73,7 @@ class Peerchat(IRCUser, object):
       IRCUser.connectionLost(self, reason)
 
    def dataReceived(self, data):
-      self.pingService.reset()
+      self.pingService.reschedule()
       for line in data.split('\n'):
          line = line.strip('\r')
          if line:

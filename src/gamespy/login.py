@@ -2,19 +2,48 @@ import random
 import string
 
 from twisted.internet.protocol import Protocol, ServerFactory
+from twisted.application.internet import TimerService
 
 from message import MessageFactory
 
+class KeepAliveService(TimerService):
+   def __init__(self, client):
+      ## ka is sent 90s after no activity from client
+      TimerService.__init__(self, 90, self.sendKa)
+      self.client = client
+
+   def stopService(self):
+      ## bug in TimerService if you stop when hasnt yet started...
+      if not hasattr(self, '_loop'):
+         return
+      else:
+         TimerService.stopService(self)
+
+   def sendKa(self):
+      self.client.sendMsg(MessageFactory.getMessage([
+         ('ka', ''),
+      ]))
+
+   def reschedule(self):
+      if hasattr(self, '_loop'):
+         self._loop._reschedule()
+
 class LoginServer(Protocol):
-   #def connectionMade(self):
-      #Protocol.connectionMade(self)
-      #self.session = self.theater.Connect()
+   def connectionMade(self):
+      self.loggedIn = False
+      self.kaService = KeepAliveService(self)
+      Protocol.connectionMade(self)
+
+   def connectionLost(self, reason):
+      self.kaService.stopService()
+      Protocol.connectionLost(self, reason)
 
    def makeChallenge(self):
       #return 'SCHALLENGE'
       return ''.join(random.choice(string.ascii_uppercase) for _ in range(10))
 
    def dataReceived(self, data):
+      self.kaService.reschedule()
       try:
          for msg in MessageFactory.getMessages(data):
             ep = '{0.host}:{0.port}'.format(self.transport.getPeer())
@@ -30,12 +59,15 @@ class LoginServer(Protocol):
    def recv_ka(self, msg):
       # ka = Keep-Alive, but also used to trigger login
       # TODO: actually disconnect users that dont send this regularly
-      self.sChal = self.makeChallenge()
-      self.sendMsg(MessageFactory.getMessage([
-         ('lc', '1'),
-         ('challenge', self.sChal),
-         ('id', '1'),
-      ]))
+      if self.loggedIn:
+         self.kaService.reschedule()
+      else:
+         self.sChal = self.makeChallenge()
+         self.sendMsg(MessageFactory.getMessage([
+            ('lc', '1'),
+            ('challenge', self.sChal),
+            ('id', '1'),
+         ]))
 
    def recv_login(self, msg):
       # [('login', ''), ('challenge', 'Qf7C8OnFz4HS9iK0HgNiebY5wamfYCJb'), ('uniquenick', 'MyEnemyMyFriend'),
@@ -55,6 +87,9 @@ class LoginServer(Protocol):
          ('uniquenick', user),         ('lt', 'XdR2LlH69XYzk3KCPYDkTY__'),
          ('id', '1')
       ]))
+
+      self.loggedIn = True
+      self.kaService.startService()
 
    def sendMsg(self, msg):
       self.factory.log.debug('sent: {0}'.format(msg))

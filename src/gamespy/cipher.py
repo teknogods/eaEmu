@@ -87,23 +87,23 @@ def passenc(data):
       data[i] ^= num % 0xff
    return data.tostring()
 
-gsSpecial = {
+_gsSpecial = {
    '+' : '[',
    '/' : ']',
    '=' : '_',
 }
-eaSpecial = {
-   '+' : '_', # could be -?
-   '/' : '-', # could be _?
+_eaSpecial = {
+   '+' : '_', # these 2 might be swapped
+   '/' : '-', # these 2 might be swapped
    '=' : '.',
 }
 def gs64encode(data):
-   for k, v in gsSpecial.items():
+   for k, v in _gsSpecial.items():
       data = data.replace(k, v)
    # is all b64 encoded data encrypted like passwords?
    return base64.b64encode(passenc(data))
 def gs64decode(data):
-   for k, v in gsSpecial.items():
+   for k, v in _gsSpecial.items():
       data = data.replace(v, k)
    return passenc(base64.b64decode(data))
 
