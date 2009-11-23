@@ -52,10 +52,6 @@ class IRCPingService(TimerService):
    def recvPong(self):
       self.reschedule()
 
-   def reschedule(self):
-      if hasattr(self, '_loop'):
-         self._loop._reschedule()
-
 class Peerchat(IRCUser, object):
    def connectionMade(self):
       IRCUser.connectionMade(self)

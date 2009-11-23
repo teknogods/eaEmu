@@ -2,7 +2,7 @@ import random
 import string
 
 from twisted.internet.protocol import Protocol, ServerFactory
-from twisted.application.internet import TimerService
+from timer import TimerService
 
 from message import MessageFactory
 
@@ -12,21 +12,10 @@ class KeepAliveService(TimerService):
       TimerService.__init__(self, 90, self.sendKa)
       self.client = client
 
-   def stopService(self):
-      ## bug in TimerService if you stop when hasnt yet started...
-      if not hasattr(self, '_loop'):
-         return
-      else:
-         TimerService.stopService(self)
-
    def sendKa(self):
       self.client.sendMsg(MessageFactory.getMessage([
          ('ka', ''),
       ]))
-
-   def reschedule(self):
-      if hasattr(self, '_loop'):
-         self._loop._reschedule()
 
 class LoginServer(Protocol):
    def connectionMade(self):

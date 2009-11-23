@@ -1,5 +1,4 @@
 import logging
-import base64
 
 from twisted.application.internet import SSLServer, TCPServer, UDPServer
 from twisted.internet.protocol import ServerFactory
@@ -59,7 +58,7 @@ def fwdDRC(self, data):
 class Service(MultiService):
    def __init__(self, addresses=None):
       MultiService.__init__(self)
-      sCtx = OpenSSLContextFactoryFactory.getFactory('EA')
+      sCtx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
 
       ## all port 80 services are currently merged into one server on 8001. apache must be set up to use rewriterules (for /u downloads)
       ## and name-based virtual hosting (for SOAP hosts) in order to redirect from port 80 to 8001

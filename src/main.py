@@ -77,6 +77,11 @@ servers = {
       ('nfsps2-pc.fesl.ea.com', 18201),
       ('nfsps2-pc.theater.ea.com', 18202), # nomally 18206 FIXME: dont hardcode these relative port offsets
    ],
+
+   ## CNC 4
+   'ea.games.cnc4.Service':[
+      ('prodgos28.ea.com', 14611),
+   ],
 }
 
 def main(argv=None):
@@ -94,7 +99,8 @@ def main(argv=None):
    else:
       log.startLogging(sys.stdout)
       for serviceName in [
-         'ea.games.redalert3.Service',
+         'ea.games.cnc4.Service',
+         #'ea.games.redalert3.Service',
          #'ea.games.nfsps2.Service',
          ]:
          addresses = servers[serviceName]

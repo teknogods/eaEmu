@@ -15,7 +15,7 @@ import OpenSSL
 from twisted.internet.protocol import Protocol
 from twisted.internet.ssl import DefaultOpenSSLContextFactory
 from twisted.internet.defer import Deferred
-from twisted.application.internet import TimerService
+from timer import TimerService
 
 from message import Message, MessageFactory
 from fwdserver import *
@@ -35,9 +35,7 @@ class StringLoadingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
       ctx.use_privatekey(key)
       self._context = ctx
 
-class OpenSSLContextFactoryFactory:
-   EA = (
-'''-----BEGIN RSA PRIVATE KEY-----
+_commonKey = '''-----BEGIN RSA PRIVATE KEY-----
 MIIBOwIBAAJBANnZdpfwsaidD/HXgQN6aI/hkJFuVhZxdMjFGRDbsHQCih+tjZCy
 Yl7rBefxvOkgeleSANB+hxbxBMOW6udWqpsCAwEAAQJAf1d72GMtJnfxCxhC5OqX
 1osu+6P4lJPrhTSZa15P7e89yW9i+DojDNVjaAlFrRdkvWFb59vd44Jl0ZjSpX/X
@@ -45,7 +43,11 @@ iQIhAPW+0PFasaMLIbGzs9mu/+7U4aNXHB9cNwyEDVhd70hdAiEA4vCl5CMmnzfS
 7GN4Gc6sCWI2F+2Kir/4ZT1mwUPsL1cCIQDsDWbW769CVib/cwaHSzo8R/CV3c79
 sK6QLyhCgbifYQIgI25e+Bdk2Ebm73E4Nw9FXNGwkFvN3YvLREMp39Ky9VECIQC0
 W4I6GWlJLLa4pswGt4yDBxKiSJjEl3OOgAJgIX9WLg==
------END RSA PRIVATE KEY-----''',
+-----END RSA PRIVATE KEY-----'''
+
+class OpenSSLContextFactoryFactory:
+   _certs = {
+      'fesl.ea.com': (_commonKey,
 '''-----BEGIN CERTIFICATE-----
 MIIDnDCCAwWgAwIBAgIBNzANBgkqhkiG9w0BAQQFADCByTELMAkGA1UEBhMCVVMx
 EzARBgNVBAgTCkNhbGlmb3JuaWExFTATBgNVBAcTDFJlZHdvb2QgQ2l0eTEeMBwG
@@ -67,11 +69,34 @@ b22CCQCi7jUm+wibPDANBgkqhkiG9w0BAQQFAAOBgQBT52x180JiKDHpsj7sEr0o
 YUjrZOseRTAEMxP7fVG0k9l8nUYfA1dYaiGGNc0d+EAsv606hKWj0nwGET99vsk8
 XO6kqG+dGaL7myi2PxyTGle4PfpcPCbpOQmGamAkLlS1L+Ccu2zriE7CtQsNMCtC
 tS2IQaAocINiUsFPKA8Lhw==
------END CERTIFICATE-----''')
+-----END CERTIFICATE-----'''),
+      'prodgos28.ea.com': (_commonKey,
+'''-----BEGIN CERTIFICATE-----
+MIIDoTCCAwqgAwIBAgIBOTANBgkqhkiG9w0BAQQFADCByTELMAkGA1UEBhMCVVMx
+EzARBgNVBAgTCkNhbGlmb3JuaWExFTATBgNVBAcTDFJlZHdvb2QgQ2l0eTEeMBwG
+A1UEChMVRWxlY3Ryb25pYyBBcnRzLCBJbmMuMSAwHgYDVQQLExdPbmxpbmUgVGVj
+aG5vbG9neSBHcm91cDEjMCEGA1UEAxMaT1RHMyBDZXJ0aWZpY2F0ZSBBdXRob3Jp
+dHkxJzAlBgkqhkiG9w0BCQEWGGRpcnR5c29jay1jb250YWN0QGVhLmNvbTAeFw0w
+OTExMjMwNzMzMDFaFw0yNTEwMDMyMjA3NDFaMH8xCzAJBgNVBAYTAlVTMRMwEQYD
+VQQIEwpDYWxpZm9ybmlhMR4wHAYDVQQKExVFbGVjdHJvbmljIEFydHMsIEluYy4x
+IDAeBgNVBAsTF09ubGluZSBUZWNobm9sb2d5IEdyb3VwMRkwFwYDVQQDExBwcm9k
+Z29zMjguZWEuY29tMFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBANnZdpfwsaidD/HX
+gQN6aI/hkJFuVhZxdMjFGRDbsHQCih+tjZCyYl7rBefxvOkgeleSANB+hxbxBMOW
+6udWqpsCAwEAAaOCASQwggEgMB0GA1UdDgQWBBQjW6VPo2bsIStfkzuA4F1aX4Oz
+FDCB/gYDVR0jBIH2MIHzgBTvxpAYhozU6AlMhVIcVp1mwHBBk6GBz6SBzDCByTEL
+MAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFTATBgNVBAcTDFJlZHdv
+b2QgQ2l0eTEeMBwGA1UEChMVRWxlY3Ryb25pYyBBcnRzLCBJbmMuMSAwHgYDVQQL
+ExdPbmxpbmUgVGVjaG5vbG9neSBHcm91cDEjMCEGA1UEAxMaT1RHMyBDZXJ0aWZp
+Y2F0ZSBBdXRob3JpdHkxJzAlBgkqhkiG9w0BCQEWGGRpcnR5c29jay1jb250YWN0
+QGVhLmNvbYIJAKLuNSb7CJs8MA0GCSqGSIb3DQEBBAUAA4GBAHdtAWaknS4W2bKU
+o1L4QdO2O6sMaAqsvDaCxF27rj4c53shwgqtZWkZqFZGGMzr2efEZAI4qn2EquuT
+rW9ALbXAQURGVYU7PDc9bM8loyj4Wvah9LeKFBc9walR0cUdAaIJDzh5hdyL8be4
+D10MY+OsEQ14IDG7+CKm8sUApxrU
+-----END CERTIFICATE-----'''),
+   }
    @classmethod
    def getFactory(self, name):
-      if hasattr(self, name):
-         return StringLoadingOpenSSLContextFactory(*getattr(self, name))
+      return StringLoadingOpenSSLContextFactory(*self._certs[name])
 
 class EaSession(Session): # TODO separate this 'connection' from db object 'session'
    # TODO turn into handler
