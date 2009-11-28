@@ -299,7 +299,9 @@ class QueryMaster(Protocol):
       ep = self.transport.getPeer()
       self.sendMsg(
          inet_aton(ep.host)
-         + struct.pack('!H', ep.port) ## TODO: is this always 0 in real msgs?
+         ## this is normally the peer's port (unneeded for room listing in gamespy's opinion, i guess)
+         #+ struct.pack('!H', ep.port) ## this always 0 in real msgs
+         + struct.pack('!H', 0)
          + self.makeFieldList((
             ('hostname', 0),
             ('numwaiting', 0),
