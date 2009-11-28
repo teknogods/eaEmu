@@ -52,9 +52,16 @@ class Peerchat(IRCUser, object):
       self.password = '' ## FIXME, TODO: remove once auth process fixed
       self.hostname = 's'
 
+      ## TODO actually require a PONG response rather than
+      ## just any traffic
+      def disconnect():
+         self.log.info('PING timeout expired; closing connection.')
+         self.transport.loseConnection()
+
       def sendPing():
          self.sendLine('PING :{0}'.format(self.hostname))
-      self.pingService = KeepaliveService(sendPing, 90, self.transport.loseConnection)
+
+      self.pingService = KeepaliveService(sendPing, 90, disconnect)
 
    def connectionLost(self, reason):
       self.pingService.stopService()
@@ -73,6 +80,10 @@ class Peerchat(IRCUser, object):
       ## real peerchat doesn't send \r, as this does, but shouldn't matter
       super(type(self), self).sendLine(line)
       #self.transport.write(line + '\n')
+
+   def irc_QUIT(self, prefix, params):
+      ## TODO: handle the goodbye message and respond to this ?
+      self.transport.loseConnection()
 
    # TODO: enumerate GS cmd ids and use more meaningful names
    def irc_CRYPT(self, prefix, params):
