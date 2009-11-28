@@ -51,13 +51,6 @@ class QueryMasterFactory(ServerFactory):
    protocol = gamespy.master.QueryMaster
    gameName = gameId
 
-def fwdDRS(self, data):
-   self.factory.log.debug('server received: %s', data)
-   ProxyServer.dataReceived(self, data)
-def fwdDRC(self, data):
-   self.factory.log.debug('client received: %s', data)
-   ProxyClient.dataReceived(self, data)
-
 class Service(MultiService):
    def __init__(self, addresses=None):
       MultiService.__init__(self)
@@ -79,7 +72,7 @@ class Service(MultiService):
 
       address = ('cncra3-pc.fesl.ea.com', 18840)
       sFact = RedAlert3LoginFactory()
-      #sFact = makeTLSFwdFactory('login.ra3cli', 'login.ra3srv', fwdDRC, fwdDRS)(*address)
+      #sFact = makeTLSFwdFactory('login.ra3cli', 'login.ra3srv')(*address)
       self.addService(SSLServer(addresses[0][1], sFact, sCtx))
 
       address = ('peerchat.gamespy.com', 6667)
@@ -95,5 +88,5 @@ class Service(MultiService):
 
       address = ('gpcm.gamespy.com', 29900)
       sFact = gamespy.gpcm.ComradeFactory()
-      #sFact = makeTCPFwdFactory('gamespy.gpcm.client', 'gamespy.gpcm.server', fwdDRC, fwdDRS)(*address)
+      #sFact = makeTCPFwdFactory('gamespy.gpcm.client', 'gamespy.gpcm.server')(*address)
       self.addService(TCPServer(address[1], sFact))

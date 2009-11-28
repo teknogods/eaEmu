@@ -3627,7 +3627,7 @@
             <dia:string>#varchar(50)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#default='#'#</dia:string>
+            <dia:string>#blank=True, default=''#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3696,7 +3696,7 @@
             <dia:string>#varchar(50)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#default='#'#</dia:string>
+            <dia:string>#blank=True, default=''#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3719,7 +3719,7 @@
             <dia:string>#varchar(50)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#default='#'#</dia:string>
+            <dia:string>#blank=True, default=''#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -3811,7 +3811,7 @@
             <dia:string>#varchar(50)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True, default=''#</dia:string>
+            <dia:string>#blank=True, default='0'#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>

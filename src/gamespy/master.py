@@ -21,6 +21,18 @@ class MasterMsg(Enum):
    AVAILABLE          = 0x09
    RESPONSE_CORRECT   = 0x0A
 
+class ResponseType(Enum):
+   VALUE_MAP          = 0x01
+   GAME_RESULT        = 0x02
+   IP_UPDATE          = 0x04
+
+class ResultType(Enum):
+   FULL = ord('~') ##traced ip,port, reported ip,port, private ip,port
+   PARTIAL = ord('w') ## traced ip,port, reported ip,port
+   MINIMAL = ord('U') ## reported public ip,port follows
+   HUNNHH = ord('\\') ## i have no clue... 10 bytes follow it (search Twinblade)
+   ## this is prly a bitfield not an enum...
+
 #class HeartbeatMasterProxy(DatagramProtocol):
    #def datagramReceived(self, data, (host, port)):
 
@@ -94,27 +106,32 @@ class HeartbeatMaster(DatagramProtocol):
       self.transport.write(data, (host, port))
 
 class ProxyMasterClient(ProxyClient):
+   def connectionMade(self):
+      ProxyClient.connectionMade(self)
+      self.log = util.getLogger('gamespy.masterCli', self)
+
    def dataReceived(self, data):
       dec = self.peer.decoder.Decode(data)
       if dec:
          self.log.debug('decoded: '+ repr(dec))
+         ''' print out ips embedded in msg
          if '~' in dec:
-            from socket import *
-            tokens = dec.split('~')
+            tokens = dec.split(chr(ResultType.FULL))
             for sub in tokens[1:]:
                if len(sub) >= 16:
                   self.log.debug('ips: {0}'.format([inet_ntoa(x) for x in [sub[:4], sub[6:][:4], sub[12:][:4]]]))
+         '''
       ProxyClient.dataReceived(self, data)
 
 class ProxyMasterClientFactory(ProxyClientFactory):
    protocol = ProxyMasterClient
 
-   def connectionMade(self):
-      ProxyClientFactory.connectionMade(self)
-      self.log = util.getLogger('gamespy.masterCli', self)
-
 class ProxyMasterServer(ProxyServer):
    clientProtocolFactory = ProxyMasterClientFactory
+
+   def connectionMade(self):
+      ProxyServer.connectionMade(self)
+      self.log = util.getLogger('gamespy.masterSrv', self)
 
    def dataReceived(self, data):
       self.log.debug('received: '+repr(data))
@@ -125,10 +142,6 @@ class ProxyMasterServer(ProxyServer):
 
 class ProxyMasterServerFactory(ProxyFactory):
    protocol = ProxyMasterServer
-
-   def connectionMade(self):
-      ProxyFactory.connectionMade(self)
-      self.log = util.getLogger('gamespy.masterSrv', self)
 
    def __init__(self, gameName, host, port):
       ProxyFactory.__init__(self, host, port)
@@ -207,7 +220,6 @@ class QueryMaster(Protocol):
       ## TODO: handle queries generically, given to us in the format
       ## "(blah = val) and (blah2 = val2)"
       '''
-      epList = []
       match = re.match(r'\(groupid=(.*?)\)', msg['request'])
       ep = self.transport.getPeer()
       response = inet_aton(ep.host) + struct.pack('!H', ep.port)
@@ -223,8 +235,6 @@ class QueryMaster(Protocol):
                session.delete()
                continue
 
-            epList.append(inet_aton(session.publicip) + struct.pack('!H', session.publicport))
-
             ## Use first class C ip as the local ip. This rule is guessed, but seems to always work.
             for ndx in range(4):
                localIp = getattr(session, 'localip{0}'.format(ndx))
@@ -233,7 +243,7 @@ class QueryMaster(Protocol):
                   break
             ## This first part of a gamelobby entry is used to create the room name's hash.
             ## room name hash is based off of publicip, localip reported here (maybe ports too?)
-            response += ('~'
+            response += (chr(ResultType.FULL)
                ## game channel name is based off of some or all of this info!
                ## TODO: RE that hash
 
@@ -244,24 +254,21 @@ class QueryMaster(Protocol):
                ## This 3rd ip is the the host farthest along the route.
                ## When all the hosts respond along the route, it's the same as the public ip.
                ## I don't know how/if this is actually used by the game.
+               ## TODO: do a traceroute on publicip and put the farthest reachable host here
                + inet_aton(session.publicip)
              )
-            print('public={0} private={1}'.format((session.publicip, session.publicport), (localIp, session.localport)))
+            #print('public={0} private={1}'.format((session.publicip, session.publicport), (localIp, session.localport)))
             response += ''.join('\xff{0}\x00'.format(getattr(session, f.rstrip('_'))) for f in msg['fields'])
          response += '\x00'
          response += '\xff'*4 ## terminator for first part of the response
          self.sendMsg(response)
          ## once this first response is sent, this server can continue to send
          ## results one-by-one. To do this, it first sends a hdr msg in the format of:
-         ##   len of whole msg(BE-short),0x01,makeFieldList()-type list
-         ## then entries in format:
-         ##   BE-shortlen of whole msg,0x02,regular entry starting with '~...', then an extra \x00 terminator
-         ##     (thats 1 term for last value, 1 regular term as with first msg, then another null in place of FFFFFFFF for first msg)
-         ## these update lines must embed all strings (val list cannot be used as in first response)
-         ## TODO: sometimes these lines are even shorter, though, and dont begin with a '~'!
-         ## TODO: msg type 0x04, it updates ip of a game in the order it was sent -- BElen,0x04,ip,port
+         ##   len of whole msg(BE-short),0x01,makeFieldList()-type list (this list always has more fields in it)
 
-         ## is this just a complete list of all fields?
+         ## This list is more complete than the one sent initially.
+         ## These fields will be present in the GAME_ENTRY messages that
+         ## are to follow.
          fields = [
             'hostname',
             'mapname',
@@ -285,13 +292,62 @@ class QueryMaster(Protocol):
             'teamAuto',
             'joinable',
          ]
-         response = '\x01' + self.makeFieldList([(f,0) for f in fields]) ## TODO enum this 01
+         response = chr(ResponseType.VALUE_MAP) + self.makeFieldList([(f,0) for f in fields])
          response = struct.pack('!H', len(response) + 2) + response
          self.sendMsg(response)
-         for ep in epList:
-            response = '\x04' + ep
+
+         ## then entries in format:
+         ##   BE-shortlen of whole msg,0x02,regular entry starting with '~...'
+         ## these update lines must embed all strings (val list cannot be used as in first response)
+         ##    -- embed state of values in field list seem to be ignored
+         ## 02 short format is:
+         ## 'w', lasttraced ip, port, privateip, privport, all fields in short form (byte values, nulls, or null-term'ed strings)
+         ## 'U', publicip, publicport, all fields as above...
+         ## these must be succeded with IP_UPDATE messeages
+         for session in db.MasterGameSession.objects.filter(channel__id=groupId):
+            ## TODO: merge with above into func
+            response = (
+               chr(ResponseType.GAME_RESULT)
+               + chr(ResultType.FULL)
+               + inet_aton(session.publicip)
+               + struct.pack('!H', session.publicport)
+               + inet_aton(localIp)
+               + struct.pack('!H', session.localport)
+               + inet_aton(session.publicip)
+             )
+            for field in fields:
+               val = getattr(session, field)
+               if type(val) in [int, long, type(None)]:
+                  response += struct.pack('B', int(val or 0))
+               elif type(val) in [str, unicode]:
+                  response += str(val) + '\x00'
             response = struct.pack('!H', len(response) + 2) + response
             self.sendMsg(response)
+
+         ''' should be done this way:
+         with LoopingCall:
+            result = getNextResult()
+            result.addCallback(sendResult)
+
+         .stop() call when new request comes in
+         '''
+         ## for now, just send what we currently have.
+
+         ## msg type 0x04, it updates the missing ips of a game retrived by msg type 0x02 -- BElen,0x04,ip,port
+         ## IP_UPDATE messages are for updating the farthest traced address the master server has reached as
+         ## it proceeds. It corresponds to the last GAME_RESULT entry returned. Once the traced IP+port == reported ip+port,
+         ## the client has enough info on that game and no longer needs these updates.
+         ## TODO: Until tracerouting is implemented (I think it's only very rarely useful, so no time soon), These messages never
+         ## need to be sent. Likewise, only ResultType.FULL need be returned in the first place.
+         '''
+         for ep in epList:
+            response = chr(ResponseType.IP_UPDATE) + ep
+            response = struct.pack('!H', len(response) + 2) + response
+            self.sendMsg(response)
+         '''
+
+         ##TODO:dunno if real servs do this
+         #self.transport.loseConnection()
 
 
    def handle_getRooms(self, msg):

@@ -605,7 +605,7 @@ class CipherProxy:
 
    def recvFromServer(self, data):
       unenc = self.serverIngress.crypt(data)
-      log = util.getLogger('gamespy.chatCli', self) #HACKy
+      log = logging.getLogger('gamespy.chatCli') #HACKy
       log.debug('received: '+repr(unenc))
       if 'Unknown CD Key' in unenc:
          unenc = re.sub(r'(:s 706 \S+) .*', r'\1 1 :Authenticated', unenc)
@@ -614,7 +614,7 @@ class CipherProxy:
 
    def recvFromClient(self, data):
       unenc = self.clientIngress.crypt(data)
-      log = util.getLogger('gamespy.chatServ', self) #HACKy
+      log = logging.getLogger('gamespy.chatServ') #HACKy
       log.debug('received: '+repr(unenc))
       #patches follow
       return self.clientEgress.crypt(unenc)
