@@ -21,7 +21,9 @@ class GamespyAuth(Protocol):
       if data.startswith('STR=00000000'):
          # initial message.
          # no body to the response.
-         self.transport.write(struct.pack(hdrFmt, lgr, '\x00'*4, hLen))
+         msg = struct.pack(hdrFmt, lgr, '\x00'*4, hLen)
+         self.log.debug('sending: %s', repr(msg))
+         self.transport.write(msg)
       elif data.startswith('STR'):
          self.transport.loseConnection()
 

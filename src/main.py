@@ -108,7 +108,7 @@ def main(argv=None):
       interface.servers = servers #TODO: decouple this list from main methods
       interface.main(argv)
    else:
-      #log.startLogging(sys.stdout)
+      log.startLogging(sys.stdout)
       for serviceName in [
          #'ea.games.cnc4.Service',
          'ea.games.redalert3.Service',

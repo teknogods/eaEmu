@@ -27,10 +27,11 @@ class LoopingCall(task.LoopingCall):
          d.addCallbacks(cb, eb)
 
 class KeepaliveService(TimerService):
-   def __init__(self, pingFunc, step, onTimeout):
+   def __init__(self, pingFunc, step, onTimeout, now=True):
       self.step = step
       self.call = (pingFunc, [], {}) # need args to pingFunc?
       self.onTimeout = onTimeout
+      self.now = now
       self.ping = defer.Deferred()
 
    def alive(self):
@@ -45,6 +46,12 @@ class KeepaliveService(TimerService):
 
       pingFunc, args, kwargs = self.call
 
+      def pingFail(failure):
+         failure.trap(defer.TimeoutError)
+         print 'Call to %s timed out. Calling onTimeout and stopping service.' % (pingFunc.__name__,)
+         self.onTimeout()
+         self.stopService()
+
       def sendPing():
          self.ping = defer.Deferred()
          ## the pingFunc is assumed to be a syncronous function that
@@ -52,11 +59,12 @@ class KeepaliveService(TimerService):
          ## TODO: maybe assume that this returns a deferred that is fired when
          ## the response is received?
          pingFunc(*args, **kwargs)
-         self.ping.setTimeout(self.step+5, self.onTimeout)
-         return self.ping
+         self.ping.addErrback(pingFail)
+         self.ping.setTimeout(self.step - 1) # timeout if no response before next iteration
+         return self.ping ## LoopingCall will reschedule as soon as this fires
 
       self._loop = LoopingCall(sendPing)
-      self._loop.start(self.step, now=True).addErrback(self._failed)
+      self._loop.start(self.step, now=self.now).addErrback(self._failed)
 
    def stopService(self):
       ## bug in TimerService if you stop when hasnt yet started...
