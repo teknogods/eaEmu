@@ -1,4 +1,5 @@
 from twisted.application.internet import TimerService
+from twisted.application.service import Service
 from twisted.internet import task
 from twisted.internet import defer
 
@@ -35,7 +36,12 @@ class KeepaliveService(TimerService):
       self.ping = defer.Deferred()
 
    def alive(self):
-      if not self.ping.called:
+      if self.ping.called:
+         if self.running:
+            ## delay until now + step
+            self._loop.stop()
+            self._loop.start(self.step, now=False)
+      else:
          self.ping.callback(None)
 
    def startService(self):
@@ -44,6 +50,7 @@ class KeepaliveService(TimerService):
       if self.running:
          return
 
+      Service.startService(self)
       pingFunc, args, kwargs = self.call
 
       def pingFail(failure):

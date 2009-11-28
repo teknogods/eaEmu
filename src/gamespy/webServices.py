@@ -93,21 +93,23 @@ class WebServer(Site):
       ## downloads server -- client grabs patch info from here
       root.putChild('u', File('webRoot/downloads/u'))
 
+      ## MOST OF THE BELOW DONT WORK SO ARE COMMENTED OUT
+
       ## redalert3pc.sake.gamespy.com
       sakeStorageServer = Resource()
       sakeStorageServer.putChild('StorageServer.asmx', StorageServer())
-      root.putChild('SakeStorageServer', sakeStorageServer)
+      #root.putChild('SakeStorageServer', sakeStorageServer)
 
       ## redalert3pc.auth.pubsvs.gamespy.com -- used to auth before reporting results
       authService = Resource()
       authService.putChild('AuthService.asmx', AuthService())
-      root.putChild('AuthService', authService)
+      #root.putChild('AuthService', authService)
 
       ## redalert3pc.comp.pubsvs.gamespy.com -- used to report match results
       compSvc = Resource()
       compSvc.putChild('competitionservice.asmx', CompetitionService())
-      root.putChild('competitionservice', compSvc)
       #compSvc.putChild('CompetitionService.asmx', CompetitionService())
+      root.putChild('competitionservice', compSvc)
       #root.putChild('CompetitionService', compSvc)
 
       ## TODO: psweb.gamespy.com -- SOAP service that serves Clan-related requests
