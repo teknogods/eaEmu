@@ -14,9 +14,9 @@ class StorageServer(StorageServerBase):
    def soap_SearchForRecords(self, ps, **kw):
       #TODO: write helpers that will covert dict+lists into these calls
       request = ps.Parse(SearchForRecordsSoapIn.typecode)
-      logging.getLogger('gamespy.sake').debug(request.__dict__)
-      logging.getLogger('gamespy.sake').debug(request._ownerids.__dict__)
-      logging.getLogger('gamespy.sake').debug(request._fields.__dict__)
+      logging.getLogger('gamespy.web.SakeStorage').debug(request.__dict__)
+      logging.getLogger('gamespy.web.SakeStorage').debug(request._ownerids.__dict__)
+      logging.getLogger('gamespy.web.SakeStorage').debug(request._fields.__dict__)
       result = SearchForRecordsSoapOut()
       result.SearchForRecordsResult = 'Success'
       result.Values = result.new_values()
@@ -37,7 +37,7 @@ class StorageServer(StorageServerBase):
       #response = response.replace('<SOAP-ENV:Header></SOAP-ENV:Header>', '')
       #response = response.replace('<ns1:values></ns1:values>', '<ns1:values />')
       #response = '<?xml version="1.0" encoding="utf-8"?>' + response
-      logging.getLogger('gamespy.sake').debug(response)
+      logging.getLogger('gamespy.web.sake').debug(response)
       r = StorageServerBase._writeResponse(self, response, request, status)
       return r
 
@@ -46,7 +46,7 @@ from soap.AuthService_server import AuthService as AuthServiceBase
 class AuthService(AuthServiceBase):
    def soap_LoginRemoteAuth(self, ps, **kw):
       request = ps.Parse(LoginRemoteAuthSoapIn.typecode)
-      logging.getLogger('gamespy.AuthService').debug(request.__dict__)
+      logging.getLogger('gamespy.web.AuthService').debug(request.__dict__)
       result = LoginRemoteAuthSoapOut()
       result.LoginRemoteAuthResult = result.new_LoginRemoteAuthResult()
       result.LoginRemoteAuthResult.ResponseCode = 0
@@ -76,7 +76,7 @@ from soap.CompetitionService_server import CompetitionService as CompetitionServ
 class CompetitionService(CompetitionServiceBase):
    def soap_SetReportIntention(self, ps, **kw):
       request = ps.Parse(SetRemoteIntentionSoapIn.typecode)
-      logging.getLogger('gamespy.CompetitionService').debug(request.__dict__)
+      logging.getLogger('gamespy.web.CompetitionService').debug(request.__dict__)
       result = SetReportIntentionSoapOut()
       result.SetReportIntentionResult = result.new_SetReportIntentionResult()
       result.SetReportIntentionResult.Result = 0
