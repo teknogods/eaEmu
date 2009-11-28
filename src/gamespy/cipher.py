@@ -92,26 +92,26 @@ _gsSpecial = {
    '/' : ']',
    '=' : '_',
 }
+
 _eaSpecial = {
    '+' : '_', # these 2 might be swapped
    '/' : '-', # these 2 might be swapped
    '=' : '.',
 }
+
 def gs64encode(data):
    for k, v in _gsSpecial.items():
       data = data.replace(k, v)
    # is all b64 encoded data encrypted like passwords?
    return base64.b64encode(passenc(data))
+
 def gs64decode(data):
    for k, v in _gsSpecial.items():
       data = data.replace(v, k)
    return passenc(base64.b64decode(data))
 
-
-
 def gs_login_proof(pwd, usr, cChal, sChal):
    md5hex = lambda x: md5.new(x).hexdigest()
-   print [repr(x) for x in (md5hex(pwd), ' '*48, usr, sChal, cChal, md5hex(pwd))]
    return md5hex(md5hex(pwd) + ' '*48 + usr + sChal + cChal + md5hex(pwd))
 
 def getMsName(gamename):

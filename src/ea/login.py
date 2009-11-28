@@ -10,12 +10,13 @@ import urllib
 import random
 import copy
 import time
+import string
 
 import OpenSSL
 from twisted.internet.protocol import Protocol
 from twisted.internet.ssl import DefaultOpenSSLContextFactory
 from twisted.internet.defer import Deferred
-from timer import TimerService
+from timer import KeepaliveService
 
 from message import Message, MessageFactory
 from fwdserver import *
@@ -187,7 +188,12 @@ class EaCmd_MemCheck(Command):
       return self.response
 
    def receiveResponse(self, msg):
-      pass ## TODO
+      self.svc.alive()
+
+   def startLoop(self):
+      self.svc = KeepaliveService(self.getResponse, 120, self.server.transport.loseConnection)
+      self.svc.startService()
+      #FIXME!!!!#self.session.services.append(svc)
 
 class EaCmd_Ping(Command):
    def getResponse(self):
@@ -199,7 +205,12 @@ class EaCmd_Ping(Command):
       return self.response
 
    def receiveResponse(self, msg):
-      pass ## TODO
+      self.svc.alive()
+
+   def startLoop(self):
+      self.svc = KeepaliveService(self.getResponse, 120, self.server.transport.loseConnection)
+      self.svc.startService()
+      #FIXME!!!!#self.session.services.append(svc)
 
 class EaServer(Protocol):
    '''
@@ -296,14 +307,10 @@ class EaMsgHlr_Hello(MessageHandler):
       self.Reply() #send initial reply
 
       ## start memcheck svc
-      svc = TimerService(120, EaCmd_MemCheck(self.server).getResponse)
-      #FIXME!!!!#self.session.services.append(svc)
-      svc.startService()
+      EaCmd_MemCheck(self.server).startLoop()
       ## start ping service
       ## todo: should this start later on? once logged in?
-      svc = TimerService(120, EaCmd_Ping(self.server).getResponse)
-      #FIXME!!!!#self.session.services.append(svc)
-      svc.startService()
+      EaCmd_Ping(self.server).startLoop()
 
 class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identical, derive this from mercs one
    def makeReply(self):
@@ -390,18 +397,18 @@ class EaMsgHlr_NuEntitleGame(MessageHandler):
 class EaMsgHlr_GetTelemetryToken(MessageHandler):
    # no inputs
    def makeReply(self):
+      ## these random bytes must be >= 0x80 so they dont interfere with msg format
+      randBytes = ''.join(chr(random.getrandbits(7)|0x80) for _ in range(100))
       return self.msg.makeReply({
          # These are all country codes it appears.
-         'enabled':'CA,MX,PR,US,VI', #Canada, Mexico, Puerto Rico, United States, Virgin Islands
-         'disabled':'AD,AF,AG,AI,AL,AM,AN,AO,AQ,AR,AS,AW,AX,AZ,BA,BB,BD,BF,BH,BI,BJ,BM,BN,BO,BR,BS,BT,BV,BW,BY,BZ,CC,CD,CF,CG,CI,CK,CL,CM,CN,CO,CR,CU,CV,CX,DJ,DM,DO,DZ,EC,EG,EH,ER,ET,FJ,FK,FM,FO,GA,GD,GE,GF,GG,GH,GI,GL,GM,GN,GP,GQ,GS,GT,GU,GW,GY,HM,HN,HT,ID,IL,IM,IN,IO,IQ,IR,IS,JE,JM,JO,KE,KG,KH,KI,KM,KN,KP,KR,KW,KY,KZ,LA,LB,LC,LI,LK,LR,LS,LY,MA,MC,MD,ME,MG,MH,ML,MM,MN,MO,MP,MQ,MR,MS,MU,MV,MW,MY,MZ,NA,NC,NE,NF,NG,NI,NP,NR,NU,OM,PA,PE,PF,PG,PH,PK,PM,PN,PS,PW,PY,QA,RE,RS,RW,SA,SB,SC,SD,SG,SH,SJ,SL,SM,SN,SO,SR,ST,SV,SY,SZ,TC,TD,TF,TG,TH,TJ,TK,TL,TM,TN,TO,TT,TV,TZ,UA,UG,UM,UY,UZ,VA,VC,VE,VG,VN,VU,WF,WS,YE,YT,ZM,ZW,ZZ', #every other country on the planet LAWL
-         'filters':'',
+         'enabled' : 'CA,MX,PR,US,VI', #Canada, Mexico, Puerto Rico, United States, Virgin Islands
+         'disabled' : 'AD,AF,AG,AI,AL,AM,AN,AO,AQ,AR,AS,AW,AX,AZ,BA,BB,BD,BF,BH,BI,BJ,BM,BN,BO,BR,BS,BT,BV,BW,BY,BZ,CC,CD,CF,CG,CI,CK,CL,CM,CN,CO,CR,CU,CV,CX,DJ,DM,DO,DZ,EC,EG,EH,ER,ET,FJ,FK,FM,FO,GA,GD,GE,GF,GG,GH,GI,GL,GM,GN,GP,GQ,GS,GT,GU,GW,GY,HM,HN,HT,ID,IL,IM,IN,IO,IQ,IR,IS,JE,JM,JO,KE,KG,KH,KI,KM,KN,KP,KR,KW,KY,KZ,LA,LB,LC,LI,LK,LR,LS,LY,MA,MC,MD,ME,MG,MH,ML,MM,MN,MO,MP,MQ,MR,MS,MU,MV,MW,MY,MZ,NA,NC,NE,NF,NG,NI,NP,NR,NU,OM,PA,PE,PF,PG,PH,PK,PM,PN,PS,PW,PY,QA,RE,RS,RW,SA,SB,SC,SD,SG,SH,SJ,SL,SM,SN,SO,SR,ST,SV,SY,SZ,TC,TD,TF,TG,TH,TJ,TK,TL,TM,TN,TO,TT,TV,TZ,UA,UG,UM,UY,UZ,VA,VC,VE,VG,VN,VU,WF,WS,YE,YT,ZM,ZW,ZZ', #every other country on the planet LAWL
+         'filters' : '',
 
-         # A connection attempt is made to this ip,port but it's not
-         # one of the regular hosts. Dunno what it is and dont have any
-         # logs for it. All I see is an unACKed SYN being sent there.
-         # Also, wtf is it called telemetry?? We're not launching rockets
-         # into space here...
-         'telemetryToken':base64.b64encode('159.153.244.83,9988,enFI,^\xf2\xf0\xbd\xaf\x88\xf8\xca\x94\x96\x9f\x96\xdd\xcd\xc6\x9b\xe9\xad\xd7\xa8\x8a\xb6\xec\xda\xb0\xec\xea\xcd\xe3\xc2\x84\x8c\x98\xb1\xc4\x99\x9b\xa6\xec\x8c\x9b\xb9\xc6\x89\xe3\xc2\x84\x8c\x98\xb0\xe0\xc0\x81\x83\x86\x8c\x98\xe1\xc6\xd1\xa9\x86\xa6\x8d\xb1\xac\x8a\x85\xba\x94\xa8\xd3\xa2\xd3\xde\x8c\xf2\xb4\xc8\xd4\xa0\xb3\xd8\xc4\x91\xb3\x86\xcc\x99\xb8\xe2\xc8\xb1\x83\x87\xcb\xb2\xee\x8c\xa5\x82\n'), # ip,port,encoding? (langCountry), ????? no clue about the rest
+         ## why is it called telemetry?? We're not launching rockets
+         ## into space here...
+         ## ip,port,encoding? (langCountry), 100 bytes (random?) keydata sent to given ip
+         'telemetryToken' : base64.b64encode('{0},{1},enUS,^{2}\n'.format(self.server.transport.getHost().host, 9955, randBytes)),
       })
 
 class EaMsgHlr_GameSpyPreAuth(MessageHandler):

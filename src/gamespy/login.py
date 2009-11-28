@@ -2,25 +2,19 @@ import random
 import string
 
 from twisted.internet.protocol import Protocol, ServerFactory
-from timer import TimerService
+from timer import KeepaliveService
 
 from message import MessageFactory
-
-class KeepAliveService(TimerService):
-   def __init__(self, client):
-      ## ka is sent 90s after no activity from client
-      TimerService.__init__(self, 90, self.sendKa)
-      self.client = client
-
-   def sendKa(self):
-      self.client.sendMsg(MessageFactory.getMessage([
-         ('ka', ''),
-      ]))
 
 class LoginServer(Protocol):
    def connectionMade(self):
       self.loggedIn = False
-      self.kaService = KeepAliveService(self)
+      def sendKa():
+         self.sendMsg(MessageFactory.getMessage([
+            ('ka', ''),
+         ]))
+         self.kaService.alive() ## expects no reply
+      self.kaService = KeepaliveService(sendKa, 90, self.transport.loseConnection)
       Protocol.connectionMade(self)
 
    def connectionLost(self, reason):
@@ -32,7 +26,7 @@ class LoginServer(Protocol):
       return ''.join(random.choice(string.ascii_uppercase) for _ in range(10))
 
    def dataReceived(self, data):
-      self.kaService.reschedule()
+      self.kaService.alive()
       try:
          for msg in MessageFactory.getMessages(data):
             ep = '{0.host}:{0.port}'.format(self.transport.getPeer())

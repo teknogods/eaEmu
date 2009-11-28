@@ -71,23 +71,26 @@ class Service(MultiService):
 
       self.addService(UDPServer(27900, gamespy.master.HeartbeatMaster()))
 
+      ## gsauth runs on a variety of ports in 99XY range
+      self.addService(TCPServer(9955, gamespy.auth.GamespyAuthFactory()))
+
       address = ('cncra3-pc.fesl.ea.com', 18840)
       sFact = RedAlert3LoginFactory()
-      #sFact = makeTLSFwdFactory('login.ra3cli', 'login.ra3srv', fwdDRC, fwdDRS)(*address)
+      sFact = makeTLSFwdFactory('login.ra3cli', 'login.ra3srv', fwdDRC, fwdDRS)(*address)
       self.addService(SSLServer(addresses[0][1], sFact, sCtx))
 
       address = ('peerchat.gamespy.com', 6667)
       sFact = gamespy.peerchat.PeerchatFactory()
-      #sFact = gamespy.peerchat.ProxyPeerchatServerFactory(gameId, *address)
+      sFact = gamespy.peerchat.ProxyPeerchatServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))
 
       from gamespy.cipher import getMsName
       address = (getMsName(gameId), 28910)
       sFact = QueryMasterFactory()
-      #sFact = gamespy.master.ProxyMasterServerFactory(gameId, *address)
+      sFact = gamespy.master.ProxyMasterServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))
 
       address = ('gpcm.gamespy.com', 29900)
       sFact = gamespy.gpcm.ComradeFactory()
-      #sFact = makeTCPFwdFactory('gamespy.gpcm.client', 'gamespy.gpcm.server', fwdDRC, fwdDRS)(*address)
+      sFact = makeTCPFwdFactory('gamespy.gpcm.client', 'gamespy.gpcm.server', fwdDRC, fwdDRS)(*address)
       self.addService(TCPServer(address[1], sFact))

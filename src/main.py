@@ -99,8 +99,8 @@ def main(argv=None):
    else:
       log.startLogging(sys.stdout)
       for serviceName in [
-         'ea.games.cnc4.Service',
-         #'ea.games.redalert3.Service',
+         #'ea.games.cnc4.Service',
+         'ea.games.redalert3.Service',
          #'ea.games.nfsps2.Service',
          ]:
          addresses = servers[serviceName]

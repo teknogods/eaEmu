@@ -1,4 +1,5 @@
 mods = [
+   'auth',
    'available',
    'gpcm',
    'login',
