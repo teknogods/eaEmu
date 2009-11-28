@@ -3,15 +3,12 @@ import warnings
 warnings.simplefilter('ignore', DeprecationWarning)
 
 interface = None
-
 try:
    import wx
    import ui.wx.wxMain
    interface = ui.wx.wxMain
 except:
    print 'Couldn\'t import WX, running in console-only mode.'
-
-from twisted.internet import reactor
 
 import re
 import traceback
@@ -21,8 +18,8 @@ import logging.config
 import sys
 from socket import gethostbyname
 
+from twisted.internet import reactor
 from twisted.python import log
-
 
 servers = {
    # TODO: maybe move port #'s and hosts into the classes themselves?
@@ -84,13 +81,26 @@ servers = {
    ],
 }
 
+class LogObs(log.PythonLoggingObserver):
+   def emit(self, eventDict):
+      text = log.textFromEventDict(eventDict)
+      if text is None:
+         return
+
+      if 'logLevel' in eventDict:
+         self.logger.log(eventDict['logLevel'], text)
+      elif eventDict['isError']:
+         self.logger.exception(text)
+      else:
+         self.logger.info(text)
+
 def main(argv=None):
    argv = argv or sys.argv
 
    logCfg = 'logging.cfg'
    if os.path.isfile(logCfg):
       logging.config.fileConfig(logCfg)
-      log.PythonLoggingObserver().start()
+      LogObs().start()
    else:
       print '{0} not found -- network traffic logging disabled.'.format(logCfg)
 

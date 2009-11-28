@@ -97,13 +97,13 @@ class ProxyMasterClient(ProxyClient):
    def dataReceived(self, data):
       dec = self.peer.decoder.Decode(data)
       if dec:
-         self.factory.log.debug('decoded: '+ repr(dec))
+         self.log.debug('decoded: '+ repr(dec))
          if '~' in dec:
             from socket import *
             tokens = dec.split('~')
             for sub in tokens[1:]:
                if len(sub) >= 16:
-                  self.factory.log.debug('ips: {0}'.format([inet_ntoa(x) for x in [sub[:4], sub[6:][:4], sub[12:][:4]]]))
+                  self.log.debug('ips: {0}'.format([inet_ntoa(x) for x in [sub[:4], sub[6:][:4], sub[12:][:4]]]))
       ProxyClient.dataReceived(self, data)
 
 class ProxyMasterClientFactory(ProxyClientFactory):
@@ -160,7 +160,6 @@ class QueryMasterMessage(dict):
 
 # HACK, TODO: right now this depends on the factory having a gameName attr, see also Proxy verison above
 class QueryMaster(Protocol):
-
    def connectionMade(self):
       Protocol.connectionMade(self)
       self.log = util.getLogger('gamespy.master', self)
@@ -173,7 +172,7 @@ class QueryMaster(Protocol):
       self.handleRequest(msg)
 
    def sendMsg(self, msg):
-      self.factory.log.debug('sent: {0}'.format(repr(msg)))
+      self.log.debug('sent: {0}'.format(repr(msg)))
       self.transport.write(msg)
 
    def handleRequest(self, msg):

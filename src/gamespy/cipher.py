@@ -7,7 +7,7 @@ import base64
 from socket import inet_aton, inet_ntoa
 from array import array
 
-import gamespy.db
+import gamespy.db as db
 import util
 
 class CipherFactory:
