@@ -11,6 +11,7 @@ from twisted.internet.protocol import ServerFactory
 
 from fesl import *
 from matchmaking import *
+import util
 
 class Mercs2Session(EaSession):
    def __init__(self, *args, **kw):
@@ -495,11 +496,11 @@ class Mercs2TheaterServer(EaServer): #kinda a HACKy misnomer but quick way to in
 
 class Mercs2LoginFactory(ServerFactory):
    protocol = Mercs2LoginServer
-   log = logging.getLogger('fesl.mercs2')
+   log = util.getLogger('fesl.mercs2', self)
    
 class Mercs2TheaterFactory(ServerFactory):
    protocol = Mercs2TheaterServer
-   log = logging.getLogger('theater.mercs2')
+   log = util.getLogger('theater.mercs2', self)
    
 class Mercs2Service(MultiService):
    def __init__(self, addresses=None):

@@ -5,6 +5,7 @@ from twisted.internet.protocol import ServerFactory
 from twisted.application.service import MultiService
 
 import gamespy
+import util
 from ea.login import *
 from ea.db import *
 
@@ -14,7 +15,7 @@ class RedAlert3LoginServer(EaServer):
    theater = Theater.objects.get(name='ra3')
    def connectionMade(self):
       EaServer.connectionMade(self)
-      self.log = logging.getLogger('login.ra3')
+      self.log = util.getLogger('login.ra3', self)
       self.msgFactory = MessageFactory(self.transport, EaLoginMessage)
       self.hlrFactory = MessageHandlerFactory(self, 'ea.games.redalert3.Ra3MsgHlr')
 
@@ -35,7 +36,10 @@ class Ra3GsLoginServer(gamespy.login.LoginServer):
 
 class Ra3GsLoginServerFactory(ServerFactory):
    protocol = Ra3GsLoginServer
-   log = logging.getLogger('gamespy.ra3Serv')
+
+   def connectionMade(self):
+      ServerFactory.connectionMade(self)
+      self.log = util.getLogger('gamespy.ra3Serv', self)
 
    def buildProtocol(self, addr):
       p = ServerFactory.buildProtocol(self, addr)
@@ -45,7 +49,6 @@ class Ra3GsLoginServerFactory(ServerFactory):
 ## TODO: should this really be game-specific?
 class QueryMasterFactory(ServerFactory):
    protocol = gamespy.master.QueryMaster
-   log = logging.getLogger('gamespy.ra3master')
    gameName = gameId
 
 def fwdDRS(self, data):

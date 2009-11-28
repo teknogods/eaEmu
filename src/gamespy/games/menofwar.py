@@ -6,7 +6,8 @@ from twisted.application.service import MultiService
 
 from matchmaking import *
 from gamespy import *
-from fwdserver import *
+from util.fwdserver import *
+import util
 
 gameId = 'menofwarpc'
 
@@ -42,7 +43,7 @@ class MowLoginServer(gamespy.login.LoginServer):
       
 class MowLoginServerFactory(ServerFactory):
    protocol = MowLoginServer
-   log = logging.getLogger('gamespy.mowServ')
+   log = util.getLogger('gamespy.mowServ', self)
    gameId = gameId
    
    def buildProtocol(self, addr):

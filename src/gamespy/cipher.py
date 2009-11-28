@@ -7,7 +7,8 @@ import base64
 from socket import inet_aton, inet_ntoa
 from array import array
 
-import db
+import gamespy.db
+import util
 
 class CipherFactory:
    def __init__(self, gameName):
@@ -152,10 +153,10 @@ class EncTypeX:
       if self.start == 0:
          assert len(data) > 0
          hdrLen = (data[0] ^ 0xEC) + 2
-         #logging.getLogger('gamespy.enctypex').debug('hdr is %s, len=%d', repr(data[:hdrLen].tostring()), len(data[:hdrLen]))
+         #util.getLogger('gamespy.enctypex', self).debug('hdr is %s, len=%d', repr(data[:hdrLen].tostring()), len(data[:hdrLen]))
          assert len(data) >= hdrLen         ivLen = data[hdrLen - 1] ^ 0xEA
          self.start = hdrLen + ivLen
-         #logging.getLogger('gamespy.enctypex').debug('IV is %s, len=%d', repr(data[hdrLen:self.start].tostring()), len(data[hdrLen:self.start]))
+         #util.getLogger('gamespy.enctypex', self).debug('IV is %s, len=%d', repr(data[hdrLen:self.start].tostring()), len(data[hdrLen:self.start]))
          assert len(data) >= self.start
          self.initDecoder(data[hdrLen:][:ivLen])
          data = data[self.start:] #sometimes there is no extra data til next receive

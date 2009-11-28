@@ -14,11 +14,12 @@ from zope.interface import implements
 from twisted.internet import defer, threads
 from twisted.words import iwords
 from twisted.python import failure
-from timer import KeepaliveService
 
 import db
-from cipher import *
-import aspects2 as aspects
+from gamespy.cipher import *
+import util
+import util.aspects2 as aspects
+from util.timer import KeepaliveService
 
 def dumpFields(self, fields, withNames=False):
    fieldVals = {}
@@ -44,7 +45,7 @@ class Peerchat(IRCUser, object):
    def connectionMade(self):
       IRCUser.connectionMade(self)
       peer = self.transport.getPeer()
-      self.log = logging.getLogger('gamespy.peerchat.{0}:{1}'.format(peer.host.replace('.','-'), peer.port))
+      self.log = util.getLogger('gamespy.peerchat', self)
 
       ## some HACKS for IRCUser compat
       self.name = '*' ## need this since user hasn't logged in yet
@@ -604,7 +605,7 @@ class CipherProxy:
 
    def recvFromServer(self, data):
       unenc = self.serverIngress.crypt(data)
-      log = logging.getLogger('gamespy.chatCli') #HACKy
+      log = util.getLogger('gamespy.chatCli', self) #HACKy
       log.debug('received: '+repr(unenc))
       if 'Unknown CD Key' in unenc:
          unenc = re.sub(r'(:s 706 \S+) .*', r'\1 1 :Authenticated', unenc)
@@ -613,7 +614,7 @@ class CipherProxy:
 
    def recvFromClient(self, data):
       unenc = self.clientIngress.crypt(data)
-      log = logging.getLogger('gamespy.chatServ') #HACKy
+      log = util.getLogger('gamespy.chatServ', self) #HACKy
       log.debug('received: '+repr(unenc))
       #patches follow
       return self.clientEgress.crypt(unenc)
@@ -623,7 +624,7 @@ class ProxyPeerchatClient(ProxyClient):
    def dataReceived(self, data):
       # first receive should have challenges
       if not self.cipher:
-         logging.getLogger('gamespy').debug(repr(data))
+         util.getLogger('gamespy', self).debug(repr(data))
          sChal = data.split(' ')[-2].strip()
          cChal = data.split(' ')[-1].strip()
          self.cipher = CipherProxy(sChal, cChal, self.peer.gamekey)
@@ -633,7 +634,10 @@ class ProxyPeerchatClient(ProxyClient):
 
 class ProxyPeerchatClientFactory(ProxyClientFactory):
    protocol = ProxyPeerchatClient
-   log = logging.getLogger('gamespy.chatCli')
+
+   def connectionMade(self):
+      ProxyClientFactory.connectionMade(self)
+      self.log = util.getLogger('gamespy.chatCli', self)
 
 class ProxyPeerchatServer(ProxyServer):
    clientProtocolFactory = ProxyPeerchatClientFactory
@@ -641,12 +645,15 @@ class ProxyPeerchatServer(ProxyServer):
       if self.peer.cipher:
          data = self.peer.cipher.recvFromClient(data)
       else:
-         logging.getLogger('gamespy').debug(repr(data))
+         util.getLogger('gamespy', self).debug(repr(data))
       ProxyServer.dataReceived(self, data)
 
 class ProxyPeerchatServerFactory(ProxyFactory):
    protocol = ProxyPeerchatServer
-   log = logging.getLogger('gamespy.chatSrv')
+
+   def connectionMade(self):
+      ProxyFactory.connectionMade(self)
+      self.log = util.getLogger('gamespy.chatSrv', self)
 
    def __init__(self, gameName, host, port):
       ProxyFactory.__init__(self, host, port)

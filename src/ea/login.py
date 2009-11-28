@@ -16,11 +16,12 @@ import OpenSSL
 from twisted.internet.protocol import Protocol
 from twisted.internet.ssl import DefaultOpenSSLContextFactory
 from twisted.internet.defer import Deferred
-from timer import KeepaliveService
 
-from message import Message, MessageFactory
-from fwdserver import *
-from db import *
+from ea.message import Message, MessageFactory
+from ea.db import *
+import util
+from util.fwdserver import *
+from util.timer import KeepaliveService
 
 class StringLoadingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
    # This is a hacky copy from twisted.internet.ssl.DefaultOpenSSLContextFactory.
@@ -224,7 +225,7 @@ class EaServer(Protocol):
 
       # subclasses should call the supermethod then reassign these
       self.hlrFactory = MessageHandlerFactory(self, 'EaMsgHlr')
-      self.log = logging.getLogger('login.{0.host}:{0.port}'.format(ep))
+      self.log = util.getLogger('login', self)
 
    def connectionLost(self, *args):
       ep = self.transport.getPeer()
@@ -385,9 +386,6 @@ class EaMsgHlr_NuLoginPersona(MessageHandler):
       persona.save()
       self.Reply()
 
-      ## start ping service now that we're successfully logged in
-      EaCmd_Ping(self.server).startLoop()
-
 class EaMsgHlr_NuEntitleGame(MessageHandler):
    # inputs are: 'password', 'nuid', 'key'
    # TODO: don't know what proper response is. This message can only be capture once per valid serial, i guess.
@@ -427,42 +425,12 @@ class EaMsgHlr_GameSpyPreAuth(MessageHandler):
          #'ticket':'CCUNTxOjYkDHJuDB9h0fw/skLy+s9DUCol1LFKmjk7Rc6/suwmWbFsKXbdZ1uZoEoQo7jHwlW7ZVw5FidVhdX8Yaw==',
          ## HACK, TODO: use login name instead of ticket so that gpcm knows who we are:
          ## this is vulnerable to impersonation since we trust the gpcm login msg isnt spoofed
-         'ticket':self.server.session.user.login,
+         'ticket':self.server.session.user.login, ## this is sent as 'authtoken' to gpcm
       })
-      # TODO:ping once just for the hell of it
-      #replies.append(self.messageClass('fsys', 0, {'TXN':'Ping'}))
 
+   def handle(self):
+      self.Reply()
 
+      ## start ping service now that we're successfully logged in
+      EaCmd_Ping(self.server).startLoop()
 
-      #server received: \ka\\final\
-      #client received: \lc\1\challenge\UKVDJNGEJQ\id\1\final\
-      #server received:
-      # \login\
-      # \challenge\mN98JpKlhYpAbZXTBulJgUPNrq02irCk
-      # \authtoken\CCUBnHUPERml+OVgejfpuXqQS9VmzKBnBalrwEnQ8HBNvxOl/8qpukAzGCJ1HzTundOT8w6gFXNtNk4bDJnd0xtgw==
-      # \partnerid\0
-      # \response\07174621471b61c2d69615e3169823da
-      # \firewall\1
-      # \port\0
-      # \productid\11419
-      # \gamename\redalert3pc
-      # \namespaceid\1
-      # \sdkrevision\11
-      # \quiet\0
-      # \id\1
-      # \final\
-      #client received: \blk\0\list\\final\
-      #client received:
-      # \bdy\3
-      # \list\165597618,165742653,166045609
-      # \final\
-      # \lc\2
-      # \sesskey\15613082
-      # \proof\c18335aebee349df74aab1534515ef14
-      # \userid\145371602
-      # \profileid\165580976
-      # \uniquenick\Jackalus
-      # \lt\VX2r6Kx2syZJKROlc6fPID__ # login token - this changes each time
-      # \id\1
-      # \final\
-      #server received: \status\1\sesskey\15613082\statstring\Online\locstring\\final\

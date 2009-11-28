@@ -3,11 +3,12 @@ import logging
 
 from twisted.internet.protocol import Protocol, ServerFactory
 
+import util
+
 class GamespyAuth(Protocol):
 
    def connectionMade(self):
-      peer = self.transport.getPeer()
-      self.log = logging.getLogger('gamespy.auth.{0}:{1}'.format(peer.host.replace('.','-'), peer.port))
+      self.log = util.getLogger('gamespy.auth', self)
 
    def dataReceived(self, data):
       hdrFmt = '!4s4sL'

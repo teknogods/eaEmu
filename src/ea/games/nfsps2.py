@@ -9,6 +9,7 @@ from twisted.application.service import MultiService
 from ea.login import *
 from ea.message import MessageFactory
 from ea.db import *
+import util
 
 from pcburnout08 import Burnout08TheaterServer
 
@@ -17,7 +18,7 @@ class LoginServer(EaServer):
 
    def connectionMade(self):
       EaServer.connectionMade(self)
-      self.log = logging.getLogger('login.nfsps2')
+      self.log = util.getLogger('login.nfsps2', self)
       self.msgFactory = MessageFactory(self.transport, EaLoginMessage)
       self.hlrFactory = MessageHandlerFactory(self, 'ea.games.redalert3.Ra3MsgHlr')
 
@@ -27,7 +28,7 @@ class LoginServerFactory(ServerFactory):
 
 class TheaterServer(Burnout08TheaterServer):#EaServer):
    theater = Theater.getTheater('nfsps2')
-   log = logging.getLogger('theater.nfsps2')
+   log = util.getLogger('theater.nfsps2', self)
 
    def connectionMade(self):
       EaServer.connectionMade(self)

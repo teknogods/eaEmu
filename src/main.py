@@ -90,6 +90,7 @@ def main(argv=None):
    logCfg = 'logging.cfg'
    if os.path.isfile(logCfg):
       logging.config.fileConfig(logCfg)
+      log.PythonLoggingObserver().start()
    else:
       print '{0} not found -- network traffic logging disabled.'.format(logCfg)
 

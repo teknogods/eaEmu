@@ -1,8 +1,8 @@
-import logging
-
 from twisted.protocols.portforward import *
 from twisted.internet import reactor
 from twisted.internet.ssl import ClientContextFactory
+
+import util
 
 def defDRClient(self, data):
    self.factory.log.debug('upstream responded: "{0}"'.format(data))
@@ -17,13 +17,17 @@ def makeTCPFwdFactory(clientLog, serverLog, clientRecv=defDRClient, serverRecv=d
       dataReceived = clientRecv
    class CF(ProxyClientFactory):
       protocol = Client
-      log = logging.getLogger(clientLog)
+      def connectionMade(self):
+         ProxyClientFactory.connectionMade(self)
+         self.log = util.getLogger(clientLog, self)
    class Serv(ProxyServer):
       clientProtocolFactory = CF
       dataReceived = serverRecv
    class SF(ProxyFactory):
       protocol = Serv
-      log = logging.getLogger(serverLog)
+      def connectionMade(self):
+         ProxyFactory.connectionMade(self)
+         self.log = util.getLogger(serverLog, self)
    return SF
 
 def makeTLSFwdFactory(clientLog, serverLog, clientRecv=defDRClient, serverRecv=defDRServer):
@@ -31,7 +35,9 @@ def makeTLSFwdFactory(clientLog, serverLog, clientRecv=defDRClient, serverRecv=d
       dataReceived = clientRecv
    class CF(ProxyClientFactory):
       protocol = Client
-      log = logging.getLogger(clientLog)
+      def connectionMade(self):
+         ProxyClientFactory.connectionMade(self)
+         self.log = util.getLogger(clientLog, self)
    class Serv(ProxyServer):
       clientProtocolFactory = CF
       dataReceived = serverRecv
@@ -42,5 +48,7 @@ def makeTLSFwdFactory(clientLog, serverLog, clientRecv=defDRClient, serverRecv=d
          reactor.connectSSL(self.factory.host, self.factory.port, client, ClientContextFactory())
    class SF(ProxyFactory):
       protocol = Serv
-      log = logging.getLogger(serverLog)
+      def connectionMade(self):
+         ProxyFactory.connectionMade(self)
+         self.log = util.getLogger(serverLog, self)
    return SF

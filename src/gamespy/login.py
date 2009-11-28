@@ -2,12 +2,14 @@ import random
 import string
 
 from twisted.internet.protocol import Protocol, ServerFactory
-from timer import KeepaliveService
 
-from message import MessageFactory
+from gamespy.message import MessageFactory
+from util.timer import KeepaliveService
+import util
 
 class LoginServer(Protocol):
    def connectionMade(self):
+      self.log = util.getLogger('gamespy.login', self)
       self.loggedIn = False
       def sendKa():
          self.sendMsg(MessageFactory.getMessage([
@@ -30,12 +32,12 @@ class LoginServer(Protocol):
       try:
          for msg in MessageFactory.getMessages(data):
             ep = '{0.host}:{0.port}'.format(self.transport.getPeer())
-            self.factory.log.debug('received ({0}): {1}'.format(ep, msg))
+            self.log.debug('received ({0}): {1}'.format(ep, msg))
             method = getattr(self, 'recv_{0}'.format(msg._pairs[0][0]), None)
             if method:
                method(msg)
             else:
-               self.factory.log.debug('unhandled: {0}'.format(msg))
+               self.log.debug('unhandled: {0}'.format(msg))
       except:
          raise
 
@@ -75,5 +77,5 @@ class LoginServer(Protocol):
       self.kaService.startService()
 
    def sendMsg(self, msg):
-      self.factory.log.debug('sent: {0}'.format(msg))
+      self.log.debug('sent: {0}'.format(msg))
       self.transport.write(repr(msg))

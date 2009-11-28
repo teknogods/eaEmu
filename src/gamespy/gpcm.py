@@ -7,9 +7,14 @@ from login import LoginServer
 from message import MessageFactory
 import db
 import cipher
+import util
 
 ## i'm pretty sure gpcm stands for GamesPy CoMrade??
 class Comrade(LoginServer):
+   def connectionMade(self):
+      LoginServer.connectionMade(self)
+      self.log = util.getLogger('gamespy.gpcm', self)
+
    def recv_login(self, msg):
       '''
       This is an override of LoginServer's handler that's needed because of a slightly different login process.
@@ -93,5 +98,4 @@ class Comrade(LoginServer):
 
 class ComradeFactory(ServerFactory):
    protocol =  Comrade
-   log = logging.getLogger('gamespy.gpcm')
 

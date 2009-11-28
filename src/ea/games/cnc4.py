@@ -7,6 +7,11 @@ from twisted.application.service import MultiService
 import gamespy
 from ea.login import *
 from ea.db import *
+import util
+
+#####
+## TODO: lots still copied over from ra3 in here!!!!
+#####
 
 gameId = 'redalert3pc'
 
@@ -14,7 +19,7 @@ class RedAlert3LoginServer(EaServer):
    theater = Theater.objects.get(name='cnc4')
    def connectionMade(self):
       EaServer.connectionMade(self)
-      self.log = logging.getLogger('login.cnc4')
+      self.log = util.getLogger('login.cnc4', self)
       self.msgFactory = MessageFactory(self.transport, EaLoginMessage)
       self.hlrFactory = MessageHandlerFactory(self, 'ea.games.redalert3.Ra3MsgHlr')
 
@@ -35,7 +40,7 @@ class Ra3GsLoginServer(gamespy.login.LoginServer):
 
 class Ra3GsLoginServerFactory(ServerFactory):
    protocol = Ra3GsLoginServer
-   log = logging.getLogger('gamespy.ra3Serv')
+   log = util.getLogger('gamespy.ra3Serv', self)
 
    def buildProtocol(self, addr):
       p = ServerFactory.buildProtocol(self, addr)
@@ -45,7 +50,7 @@ class Ra3GsLoginServerFactory(ServerFactory):
 ## TODO: should this really be game-specific?
 class QueryMasterFactory(ServerFactory):
    protocol = gamespy.master.QueryMaster
-   log = logging.getLogger('gamespy.ra3master')
+   log = util.getLogger('gamespy.ra3master', self)
    gameName = gameId
 
 

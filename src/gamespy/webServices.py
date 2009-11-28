@@ -1,5 +1,3 @@
-import logging
-
 from twisted.web.server import Site
 from twisted.web.resource import Resource
 from twisted.web.static import File
@@ -7,6 +5,11 @@ from twisted.web.static import File
 # generate the classes with 'wsdl2py -wb http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx?WSDL'
 from soap.StorageServer_server import *
 from soap.StorageServer_server import StorageServer as StorageServerBase
+
+# TODO: use this for logging
+import util
+import logging # delme once switched
+
 class StorageServer(StorageServerBase):
    def soap_SearchForRecords(self, ps, **kw):
       #TODO: write helpers that will covert dict+lists into these calls

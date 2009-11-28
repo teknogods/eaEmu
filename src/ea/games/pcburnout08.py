@@ -6,7 +6,8 @@ from twisted.internet.protocol import ServerFactory
 
 from ea.db import *
 from ea.login import *
-#from fwdserver import *
+#from util.fwdserver import *
+import util
 
 def fC(self, data):
    print repr(data)
@@ -515,11 +516,11 @@ class Burnout08TheaterServer(EaServer):
 
 class Burnout08LoginServerFactory(ServerFactory):
    protocol = Burnout08LoginServer
-   log = logging.getLogger('fesl.burnout08')
+   log = util.getLogger('fesl.burnout08', self)
 
 class Burnout08TheaterServerFactory(ServerFactory):
    protocol = Burnout08TheaterServer
-   log = logging.getLogger('theater.burnout08')
+   log = util.getLogger('theater.burnout08', self)
 
 class Burnout08Service(MultiService):
    def __init__(self, addresses=None):

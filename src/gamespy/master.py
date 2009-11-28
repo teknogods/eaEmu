@@ -9,8 +9,9 @@ from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.protocols.portforward import *
 
 import db
-import aspects2 as aspects
-from enum import Enum
+import util
+import util.aspects2 as aspects
+from util.enum import Enum
 from cipher import CipherFactory
 
 class MasterMsg(Enum):
@@ -31,9 +32,8 @@ class HeartbeatMaster(DatagramProtocol):
    I think the two master servs are separate in order to save
    bandwidth and CPU usage by running the heartbeat service as UDP. heartbeat packets can get dropped too.
    '''
-   log = logging.getLogger('gamespy.heartbeatMaster')
-
    def datagramReceived(self, data, (host, port)):
+      self.log = util.getLogger('gamespy.heartbeatMaster', host=host, port=port)
       msgId, clientId, body = ord(data[0]), struct.unpack('!L', data[1:][:4])[0], data[5:]
       if msgId == MasterMsg.AVAILABLE:
          # eg, '\x09\0\0\0\0redalert3pc\0':
@@ -108,13 +108,16 @@ class ProxyMasterClient(ProxyClient):
 
 class ProxyMasterClientFactory(ProxyClientFactory):
    protocol = ProxyMasterClient
-   log = logging.getLogger('gamespy.masterCli')
+
+   def connectionMade(self):
+      ProxyClientFactory.connectionMade(self)
+      self.log = util.getLogger('gamespy.masterCli', self)
 
 class ProxyMasterServer(ProxyServer):
    clientProtocolFactory = ProxyMasterClientFactory
 
    def dataReceived(self, data):
-      self.factory.log.debug('received: '+repr(data))
+      self.log.debug('received: '+repr(data))
       ProxyServer.dataReceived(self, data)
       # everytime a request goes out, re-init the decoder
       validate = data[9:].split('\0')[2][:8]
@@ -122,7 +125,10 @@ class ProxyMasterServer(ProxyServer):
 
 class ProxyMasterServerFactory(ProxyFactory):
    protocol = ProxyMasterServer
-   log = logging.getLogger('gamespy.masterSrv')
+
+   def connectionMade(self):
+      ProxyFactory.connectionMade(self)
+      self.log = util.getLogger('gamespy.masterSrv', self)
 
    def __init__(self, gameName, host, port):
       ProxyFactory.__init__(self, host, port)
@@ -130,16 +136,16 @@ class ProxyMasterServerFactory(ProxyFactory):
 
 def makeRecv(superClass, xor=False):
    def recv(self, data):
-      self.factory.log.debug('received: {0}'.format([x.data for x in parseMsgs(data, xor)]))
+      self.log.debug('received: {0}'.format([x.data for x in parseMsgs(data, xor)]))
       superClass.dataReceived(self, data)
    return recv
 
 def recvMasterCli(self, data):
-   self.factory.log.debug('received: {0}'.format(data))
+   self.log.debug('received: {0}'.format(data))
    ProxyClient.dataReceived(self, data)
 
 def recvMasterSrv(self, data):
-   self.factory.log.debug('received: {0}'.format(data))
+   self.log.debug('received: {0}'.format(data))
    ProxyServer.dataReceived(self, data)
 
 class QueryMasterMessage(dict):
@@ -154,11 +160,16 @@ class QueryMasterMessage(dict):
 
 # HACK, TODO: right now this depends on the factory having a gameName attr, see also Proxy verison above
 class QueryMaster(Protocol):
+
+   def connectionMade(self):
+      Protocol.connectionMade(self)
+      self.log = util.getLogger('gamespy.master', self)
+
    def dataReceived(self, data):
       # first 8 are binary with some nulls, so have to skip those manually before splitting
       msg = QueryMasterMessage.getMessage(data)
-      #self.factory.log.debug('received: {0}'.format(m))
-      self.factory.log.debug('received: request={0}'.format(msg['request']))
+      #self.log.debug('received: {0}'.format(m))
+      self.log.debug('received: request={0}'.format(msg['request']))
       self.handleRequest(msg)
 
    def sendMsg(self, msg):
