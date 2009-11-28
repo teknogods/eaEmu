@@ -43,7 +43,7 @@ class LoginServer(Protocol):
       # ka = Keep-Alive, but also used to trigger login
       # TODO: actually disconnect users that dont send this regularly
       if self.loggedIn:
-         self.kaService.reschedule()
+         self.kaService.alive()
       else:
          self.sChal = self.makeChallenge()
          self.sendMsg(MessageFactory.getMessage([
