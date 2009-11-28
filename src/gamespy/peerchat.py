@@ -43,7 +43,8 @@ db.Stats.dumpFields = dumpFields
 class Peerchat(IRCUser, object):
    def connectionMade(self):
       IRCUser.connectionMade(self)
-      self.log  = logging.getLogger('gamespy.peerchat.{0.host}:{0.port}'.format(self.transport.getPeer()))
+      peer = self.transport.getPeer()
+      self.log = logging.getLogger('gamespy.peerchat.{0}:{1}'.format(peer.host.replace('.','-'), peer.port))
 
       ## some HACKS for IRCUser compat
       self.name = '*' ## need this since user hasn't logged in yet

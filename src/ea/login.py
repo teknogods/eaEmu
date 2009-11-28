@@ -308,9 +308,6 @@ class EaMsgHlr_Hello(MessageHandler):
 
       ## start memcheck svc
       EaCmd_MemCheck(self.server).startLoop()
-      ## start ping service
-      ## todo: should this start later on? once logged in?
-      EaCmd_Ping(self.server).startLoop()
 
 class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identical, derive this from mercs one
    def makeReply(self):
@@ -387,6 +384,9 @@ class EaMsgHlr_NuLoginPersona(MessageHandler):
       persona.selected = True
       persona.save()
       self.Reply()
+
+      ## start ping service now that we're successfully logged in
+      EaCmd_Ping(self.server).startLoop()
 
 class EaMsgHlr_NuEntitleGame(MessageHandler):
    # inputs are: 'password', 'nuid', 'key'
