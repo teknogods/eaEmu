@@ -17,7 +17,7 @@ class RedAlert3LoginServer(EaServer):
       EaServer.connectionMade(self)
       self.log = util.getLogger('login.ra3', self)
       self.msgFactory = MessageFactory(self.transport, EaLoginMessage)
-      self.hlrFactory = MessageHandlerFactory(self, 'ea.games.redalert3.Ra3MsgHlr')
+      self.hlrFactory = MessageHandlerFactory(self, 'eaEmu.ea.games.redalert3.Ra3MsgHlr')
 
 class Ra3MsgHlr_Hello(EaMsgHlr_Hello):
    def makeReply(self):
