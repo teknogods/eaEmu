@@ -15,7 +15,7 @@ from twisted.internet import defer, threads
 from twisted.words import iwords
 from twisted.python import failure
 
-import db
+from . import db
 from gamespy.cipher import *
 import util
 import util.aspects2 as aspects
@@ -65,6 +65,7 @@ class Peerchat(IRCUser, object):
 
    def connectionLost(self, reason):
       self.pingService.stopService()
+      self.avatar.leaveAll()
       IRCUser.connectionLost(self, reason)
 
    def dataReceived(self, data):
@@ -515,6 +516,13 @@ class DbUser(db.User):
 
    def leave(self, group, reason=None):
       return group.remove(self.mind, reason)
+
+   def leaveAll(self, reason=None):
+      departures = []
+      for chan in self.channel_set.all():
+         group = DbGroup.objects.get(id=chan.id) ##FIXME this is essentially a cast
+         departures.append(self.leave(group, reason))
+      return defer.DeferredList(departures)
 
    def send(self, recipient, message):
       from time import time

@@ -7,7 +7,7 @@ import base64
 from socket import inet_aton, inet_ntoa
 from array import array
 
-import gamespy.db as db
+from . import db
 import util
 
 class CipherFactory:
@@ -100,11 +100,12 @@ _eaSpecial = {
    '=' : '.',
 }
 
+## ???: is all b64 encoded data encrypted like passwords?
 def gs64encode(data):
+   encData = base64.b64encode(passenc(data))
    for k, v in _gsSpecial.items():
-      data = data.replace(k, v)
-   # is all b64 encoded data encrypted like passwords?
-   return base64.b64encode(passenc(data))
+      encData = encData.replace(k, v)
+   return encData
 
 def gs64decode(data):
    for k, v in _gsSpecial.items():

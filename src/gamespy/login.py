@@ -3,13 +3,13 @@ import string
 
 from twisted.internet.protocol import Protocol, ServerFactory
 
-from gamespy.message import MessageFactory
+from .message import MessageFactory
 from util.timer import KeepaliveService
-import util
+from util import getLogger
 
 class LoginServer(Protocol):
    def connectionMade(self):
-      self.log = util.getLogger('gamespy.login', self)
+      self.log = getLogger('gamespy.login', self)
       self.loggedIn = False
       def sendKa():
          self.sendMsg(MessageFactory.getMessage([
