@@ -5,7 +5,7 @@ warnings.simplefilter('ignore', DeprecationWarning)
 interface = None
 try:
    import wx
-   import ui.wx.wxMain
+   import eaEmu.ui.wx.wxMain
    interface = ui.wx.wxMain
 except:
    print 'Couldn\'t import WX, running in console-only mode.'
@@ -25,7 +25,7 @@ servers = {
    # TODO: maybe move port #'s and hosts into the classes themselves?
 
    # Men of War
-   'gamespy.games.menofwar.MowService':[
+   'eaEmu.gamespy.games.menofwar.MowService':[
       ('gpcm.gamespy.com', 29900),
       ('peerchat.gamespy.com', 6667),
       ('files.bestway.com.ua', 80),
@@ -40,18 +40,18 @@ servers = {
       ],
 
    # Mercs 2
-   'ea.games.mercs2.Mercs2Service':[
+   'eaEmu.ea.games.mercs2.Mercs2Service':[
       ('mercs2-pc.fesl.ea.com', 18710), # makes theater server at port +1
       #('mercs2-theater.fesl.ea.com', 18715), #not needed since hostname sent by fesl
    ],
 
    # Burnout Paradise The Ultimate Box
-   'ea.games.pcburnout08.Burnout08Service':[
+   'eaEmu.ea.games.pcburnout08.Burnout08Service':[
       ('pcburnout08.ea.com', 21841), # makes theater(ish) server at port +1
    ],
 
    # RA 3
-   'ea.games.redalert3.Service':[
+   'eaEmu.ea.games.redalert3.Service':[
       ('cncra3-pc.fesl.ea.com', 18840),
       #('cncra3-pc.theater.ea.com', 18845), # not in use by EA, not strictly needed anyway
       ('redalert3pc.available.gamespy.com', 27900),
@@ -70,13 +70,13 @@ servers = {
       ('redalert3pc.natneg3.gamespy.com', 80),
    ],
    # Need for Speed SHIFT (a.k.a. pro street 2)
-   'ea.games.nfsps2.Service':[
+   'eaEmu.ea.games.nfsps2.Service':[
       ('nfsps2-pc.fesl.ea.com', 18201),
       ('nfsps2-pc.theater.ea.com', 18202), # nomally 18206 FIXME: dont hardcode these relative port offsets
    ],
 
    ## CNC 4
-   'ea.games.cnc4.Service':[
+   'eaEmu.ea.games.cnc4.Service':[
       ('prodgos28.ea.com', 14611),
    ],
 }
@@ -110,9 +110,9 @@ def main(argv=None):
    else:
       log.startLogging(sys.stdout)
       for serviceName in [
-         #'ea.games.cnc4.Service',
-         'ea.games.redalert3.Service',
-         #'ea.games.nfsps2.Service',
+         #'eaEmu.ea.games.cnc4.Service',
+         'eaEmu.ea.games.redalert3.Service',
+         #'eaEmu.ea.games.nfsps2.Service',
          ]:
          addresses = servers[serviceName]
          mod, name = serviceName.rsplit('.', 1)

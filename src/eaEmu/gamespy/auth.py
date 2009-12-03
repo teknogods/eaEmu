@@ -3,7 +3,7 @@ import logging
 
 from twisted.internet.protocol import Protocol, ServerFactory
 
-import util
+from .. import util
 
 class GamespyAuth(Protocol):
 

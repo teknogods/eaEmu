@@ -8,7 +8,7 @@ from socket import inet_aton, inet_ntoa
 from array import array
 
 from . import db
-import util
+from .. import util
 
 class CipherFactory:
    def __init__(self, gameName):

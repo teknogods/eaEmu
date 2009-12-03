@@ -4,10 +4,10 @@ from twisted.application.internet import SSLServer, TCPServer, UDPServer
 from twisted.internet.protocol import ServerFactory
 from twisted.application.service import MultiService
 
-import gamespy
-import util
-from ea.login import *
-from ea.db import *
+from ... import gamespy
+from ... import util
+from ..login import *
+from ..db import *
 
 gameId = 'redalert3pc'
 
@@ -80,7 +80,7 @@ class Service(MultiService):
       #sFact = gamespy.peerchat.ProxyPeerchatServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))
 
-      from gamespy.cipher import getMsName
+      from ...gamespy.cipher import getMsName
       address = (getMsName(gameId), 28910)
       sFact = QueryMasterFactory()
       #sFact = gamespy.master.ProxyMasterServerFactory(gameId, *address)

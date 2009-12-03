@@ -1,15 +1,15 @@
-from gamespy.cipher import *
+from ..gamespy.cipher import *
 
 try:
-   import dj.settings
+   from ..dj import settings
    import django.conf
    if not django.conf.settings.configured:
-      django.conf.settings.configure(**dj.settings.__dict__)
+      django.conf.settings.configure(**settings.__dict__)
 
    import django.db.models
 
-   from dj.eaEmu import models
-   from dj.eaEmu.models import GameList, Player, EnterGameRequest, Persona
+   from ..dj.eaEmu import models
+   from ..dj.eaEmu.models import GameList, Player, EnterGameRequest, Persona
 except Exception, e:
    print 'Exception while importing django modules:', e
    # generate dummy classes here so we can at least load up

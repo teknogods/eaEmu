@@ -3,14 +3,14 @@
 
 # TODO: clean up this import stuff
 try:
-   import dj.settings
+   from ..dj import settings
    import django.conf
    if not django.conf.settings.configured:
-      django.conf.settings.configure(**dj.settings.__dict__)
-   from dj.eaEmu.models import *
-except Exception, e:
-   print 'Exception while importing django modules:', e
-   
+      django.conf.settings.configure(**settings.__dict__)
+   from ..dj.eaEmu.models import *
+except Exception, ex:
+   print 'Exception while importing django modules:', ex
+
 import new
 
 # to find gamekey, look for gameid in memory, like 'menofwarpcd' ASCII

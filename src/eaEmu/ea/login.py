@@ -17,11 +17,11 @@ from twisted.internet.protocol import Protocol
 from twisted.internet.ssl import DefaultOpenSSLContextFactory
 from twisted.internet.defer import Deferred
 
-from ea.message import Message, MessageFactory
-from ea.db import *
-import util
-from util.fwdserver import *
-from util.timer import KeepaliveService
+from .message import Message, MessageFactory
+from .db import *
+from .. import util
+from ..util.fwdserver import *
+from ..util.timer import KeepaliveService
 
 class StringLoadingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
    # This is a hacky copy from twisted.internet.ssl.DefaultOpenSSLContextFactory.

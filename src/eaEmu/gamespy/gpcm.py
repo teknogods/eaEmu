@@ -3,11 +3,11 @@ import random
 
 from twisted.internet.protocol import ServerFactory
 
-from login import LoginServer
-from message import MessageFactory
-import db
-import cipher
-import util
+from .login import LoginServer
+from .message import MessageFactory
+from . import db
+from . import cipher
+from .. import util
 
 ## i'm pretty sure gpcm stands for GamesPy CoMrade??
 class Comrade(LoginServer):

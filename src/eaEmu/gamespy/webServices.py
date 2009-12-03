@@ -7,7 +7,7 @@ from soap.StorageServer_server import *
 from soap.StorageServer_server import StorageServer as StorageServerBase
 
 # TODO: use this for logging
-import util
+from .. import util
 import logging # delme once switched
 
 class StorageServer(StorageServerBase):

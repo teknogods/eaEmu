@@ -16,11 +16,13 @@ from twisted.words import iwords
 from twisted.python import failure
 
 from . import db
-from gamespy.cipher import *
-import util
-import util.aspects2 as aspects
-from util.timer import KeepaliveService
+from .cipher import *
+from .. import util
+from ..util import aspects2 as aspects
+from ..util.timer import KeepaliveService
 
+
+@util.AttachMethod(db.Stats)
 def dumpFields(self, fields, withNames=False):
    fieldVals = {}
    for fld in fields:
@@ -39,7 +41,6 @@ def dumpFields(self, fields, withNames=False):
                                 [[str(fieldVals[k])] for k in fields],
                                 []
    ))
-db.Stats.dumpFields = dumpFields
 
 class Peerchat(IRCUser, object):
    def connectionMade(self):
@@ -464,7 +465,7 @@ class DbGroup(db.Channel):
       assert recipient is self
       receives = []
       for usr in self.users.exclude(id=sender.avatar.id):
-         usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
+         usr = DbUser.objects.get(id=usr.id) ##FIXME: should be no cast
          clt = usr.mind
          if clt is None:
             continue ## HACK: this is need for clients that exit badly

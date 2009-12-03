@@ -8,11 +8,11 @@ from datetime import datetime, timedelta
 from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.protocols.portforward import *
 
-import db
-import util
-import util.aspects2 as aspects
-from util.enum import Enum
-from cipher import CipherFactory
+from . import db
+from .. import util
+from ..util import aspects2 as aspects
+from ..util.enum import Enum
+from .cipher import CipherFactory
 
 class MasterMsg(Enum):
    CHALLENGE_RESPONSE = 0x01
