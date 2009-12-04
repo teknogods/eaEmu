@@ -115,6 +115,15 @@ class CdKey(models.Model) :
         return u""
 
 
+class UserIrcInfo(models.Model) :
+    user = models.ForeignKey(User)
+    channel = models.ForeignKey(Channel,null=True)
+    mode = models.CharField(max_length=50, default='' )
+
+    def __unicode__(self):
+        return u""
+
+
 class GameSession(models.Model) :
     host = models.OneToOneField(User)
     created = models.DateTimeField()

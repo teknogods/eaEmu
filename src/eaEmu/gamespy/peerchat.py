@@ -21,6 +21,8 @@ from .. import util
 from ..util import aspects2 as aspects
 from ..util.timer import KeepaliveService
 
+## TODO: all db access should go into DbGroup and DbUser
+## They should also all use Deferreds
 
 @util.AttachMethod(db.Stats)
 def dumpFields(self, fields, withNames=False):
@@ -140,7 +142,16 @@ class Peerchat(IRCUser, object):
 
    def irc_CDKEY(self, prefix, params):
       self.sendMessage('706', '1', ':Authenticated')
+
+      ## At this point, user is "logged in"
+
       self.pingService.startService()
+
+      ## db initializations go here
+      ## TODO: move get_or_create Stats here
+      ## create user mode object
+      info = db.UserIrcInfo.objects.get_or_create(user=self.avatar, channel=None)
+
 
    def irc_PONG(self, prefix, params):
       self.pingService.alive()
@@ -372,6 +383,36 @@ class Peerchat(IRCUser, object):
             irc.ERR_USERSDONTMATCH,
             ":You can't look at someone else's modes.")
 
+
+   def irc_JOIN(self, prefix, params):
+      try:
+         groupName = params[0].decode(self.encoding)
+      except UnicodeDecodeError:
+         self.sendMessage(
+            irc.IRC_NOSUCHCHANNEL, params[0],
+            ":No such channel (could not decode your unicode!)")
+         return
+
+      if groupName.startswith('#'):
+         groupName = groupName[1:]
+
+      def cbGroup(group):
+         def cbJoin(ign):
+            self.userJoined(group, self)
+            self.names(
+               self.name,
+               '#' + group.name,
+               [('@' if 'o' in user.getChanMode(group) else '') + user.name for user in group.iterusers()])
+            self._sendTopic(group)
+         return self.avatar.join(group).addCallback(cbJoin)
+
+      def ebGroup(err):
+         self.sendMessage(
+            irc.ERR_NOSUCHCHANNEL, '#' + groupName,
+            ":No such channel.")
+
+      self.realm.getGroup(groupName).addCallbacks(cbGroup, ebGroup)
+
 class PeerchatFactory(IRCFactory):
    protocol = Peerchat
 
@@ -426,7 +467,13 @@ class DbGroup(db.Channel):
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
       if client.avatar not in self.users.all():
+         ## set mode for user in this channel
+         info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)
+
          additions = []
+         if self.users.count() == 0 and self.name.startswith('GSP'):
+            client.avatar.setChanMode(self, '+o')
+            ## first in private chan, promote to op
          self.users.add(client.avatar) ## TODO: deferred
          ## notify other clients in this group
          for usr in self.users.exclude(id=client.avatar.id): ## better way to write this?

@@ -2,14 +2,6 @@
 import warnings
 warnings.simplefilter('ignore', DeprecationWarning)
 
-interface = None
-try:
-   import wx
-   import eaEmu.ui.wx.wxMain
-   interface = ui.wx.wxMain
-except:
-   print 'Couldn\'t import WX, running in console-only mode.'
-
 import re
 import traceback
 import os
@@ -103,6 +95,14 @@ def main(argv=None):
       LogObs().start()
    else:
       print '{0} not found -- network traffic logging disabled.'.format(logCfg)
+
+   interface = None
+   try:
+      import wx
+      import eaEmu.ui.wx.wxMain
+      interface = ui.wx.wxMain
+   except:
+      print 'Couldn\'t import WX, running in console-only mode.'
 
    if interface:
       interface.servers = servers #TODO: decouple this list from main methods
