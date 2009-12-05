@@ -4,9 +4,10 @@ from twisted.python import usage
 from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker
 from twisted.application import internet
+from twisted.python.usage import portCoerce
 
 class EaEmuOptions(usage.Options):
-    optParameters = [['port', 'p', 1235, 'The port number to listen on.']]
+   optParameters = [['port', 'p', 1235, 'The port number to listen on.']]
 
 class EaEmuServiceFactory(object):
    implements(IServiceMaker, IPlugin)
@@ -24,7 +25,9 @@ class EaEmuServiceFactory(object):
 ## Unless it'd be possible to keep them separate and somehow
 ## share port 80... dont think so.
 class Ra3Options(usage.Options):
-    pass#optParameters = [['port', 'p', 1235, 'The port number to listen on.']]
+   optParameters = [
+       ['webport', 'p', 80, 'The port to run the http web services on.', portCoerce],
+   ]
 
 class Ra3ServiceFactory(object):
    implements(IServiceMaker, IPlugin)
@@ -34,7 +37,7 @@ class Ra3ServiceFactory(object):
 
    def makeService(self, options):
       from eaEmu.ea.games.redalert3 import Service
-      return Service()
+      return Service(**options)
 
 #eaEmu = EaEmuServiceFactory()
 ra3serv = Ra3ServiceFactory()

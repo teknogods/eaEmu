@@ -74,7 +74,6 @@ def main(argv=None):
       from twisted.python import log
       log.startLogging(sys.stdout)
       for serviceName in defaultServices:
-         addresses = servers[serviceName]
          mod, name = serviceName.rsplit('.', 1)
          service = getattr(__import__(mod, fromlist=[name]), name)()
          service.startService()
@@ -91,7 +90,6 @@ def getApplication(services=defaultServices):
 
    application = Application('EA Online Server Emulator')
    for serviceName in services:
-      addresses = servers[serviceName]
       mod, name = serviceName.rsplit('.', 1)
       service = getattr(__import__(mod, fromlist=[name]), name)()
       service.setServiceParent(application)

@@ -1,16 +1,30 @@
 #last edited on: 2007.07.20
 import distutils.core, py2exe
 import sys, os, shutil
+import os
 from os.path import *
+
+dirsToSearch = [
+   'eaEmu',
+   'django',
+]
 
 def main(argv=None):
     argv = argv or sys.argv
-    includes = [x.rsplit('.', 1)[0] for x in os.listdir(os.path.dirname(argv[0])) if x.endswith('.py') and x != os.path.basename(argv[0])]
-    buildpy('main.py', includes)
+    pyFiles = []
+    for dir in dirsToSearch:
+       for dirpath, dirnames, filenames in os.walk(dir):
+         pyFiles.extend((dirpath + os.sep + f[:-3]).replace(os.sep, '.') for f in filenames if f.endswith('.py'))
+    pyFiles.extend([
+    'aspects',
+    'sqlite3',
+    'ZSI.schema',
+    ])
+    buildpy('eaEmu.tac', pyFiles)
 
 def buildpy(py, includes=[]):
     path = abspath(py)
-    name = basename(splitext(path)[0])
+    name, ext = splitext(basename(path))
     distutils.core.setup(
         script_args = ['py2exe'],
         options = {'py2exe': {'compressed': 1,
@@ -19,7 +33,8 @@ def buildpy(py, includes=[]):
                                'includes' : includes,
                               }
                    },
-        windows = [name + '.py'],
+        console = [name + ext],
+        #windows = [name + ext],
         zipfile = None,
     )
     shutil.move('dist/%s.exe' % name, join(dirname(path), name + '.exe'))
