@@ -133,13 +133,6 @@ class Peerchat(IRCUser, object):
 
       IRCUser.irc_NICK(self, prefix, params) ## sends _welcomeMessage
 
-   ##TODO: support channel ops and make hosts ops in their lobby channels
-   '''
-   def names(self, user, channel, names):
-      names = [('@'+n) if n == 'Jackalus' else n for n in names] ## SUPER HACK
-      super(type(self), self).names(user, channel, names)
-   '''
-
    def irc_CDKEY(self, prefix, params):
       self.sendMessage('706', '1', ':Authenticated')
 
@@ -384,6 +377,8 @@ class Peerchat(IRCUser, object):
             ":You can't look at someone else's modes.")
 
 
+   ## TODO: this method and irc_NAMES (still broken)
+   ## should call the same code.
    def irc_JOIN(self, prefix, params):
       try:
          groupName = params[0].decode(self.encoding)
