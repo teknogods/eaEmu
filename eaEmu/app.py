@@ -12,6 +12,7 @@ from socket import gethostbyname
 
 from twisted.internet import reactor
 from twisted.python import log
+from twisted.application.service import Application
 
 servers = {
    # TODO: maybe move port #'s and hosts into the classes themselves?
@@ -86,6 +87,7 @@ class LogObs(log.PythonLoggingObserver):
       else:
          self.logger.info(text)
 
+## TODO: deprecate main in favor of Application + twistd
 def main(argv=None):
    argv = argv or sys.argv
 
@@ -105,6 +107,8 @@ def main(argv=None):
       print 'Couldn\'t import WX, running in console-only mode.'
 
    if interface:
+      ## TODO: see twistd --help-reactors and use that to launch gui mode
+      ## (detect what reactor's being used)
       interface.servers = servers #TODO: decouple this list from main methods
       interface.main(argv)
    else:
@@ -120,5 +124,28 @@ def main(argv=None):
          service.startService()
       reactor.run()
 
+def getApplication():
+   logCfg = 'logging.cfg'
+   if os.path.isfile(logCfg):
+      logging.config.fileConfig(logCfg)
+      LogObs().start()
+   else:
+      print '{0} not found -- network traffic logging disabled.'.format(logCfg)
+
+   application = Application('EA Online Server Emulator')
+   for serviceName in [
+      #'eaEmu.ea.games.cnc4.Service',
+      'eaEmu.ea.games.redalert3.Service',
+      #'eaEmu.ea.games.nfsps2.Service',
+      ]:
+      addresses = servers[serviceName]
+      mod, name = serviceName.rsplit('.', 1)
+      service = getattr(__import__(mod, fromlist=[name]), name)(addresses)
+      service.setServiceParent(application)
+
+   return application
+
 if __name__ == '__main__':
    main()
+else:
+   application = getApplication()
