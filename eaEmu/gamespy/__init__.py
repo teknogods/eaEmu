@@ -1,12 +1,14 @@
-mods = [
+__all__ = [
    'auth',
-   'available',
+   'cipher',
    'gpcm',
+   'db',
    'login',
    'master',
+   'message',
    'peerchat',
    'webServices',
 ]
 
-for m in mods:
-   exec 'import {0}'.format(m)
+for mod in __all__:
+   exec 'from . import {0}'.format(mod)

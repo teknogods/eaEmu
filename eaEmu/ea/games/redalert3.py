@@ -51,8 +51,28 @@ class QueryMasterFactory(ServerFactory):
    protocol = gamespy.master.QueryMaster
    gameName = gameId
 
+addresses = [
+   ('cncra3-pc.fesl.ea.com', 18840),
+   #('cncra3-pc.theater.ea.com', 18845), # not in use by EA, not strictly needed anyway
+   ('redalert3pc.available.gamespy.com', 27900),
+   ('na.llnet.eadownloads.ea.com', 80), # this is used in 1.4
+   #('servserv.generals.ea.com', 80), # this is used in 1.0
+   ('peerchat.gamespy.com', 6667),
+   ('gpcm.gamespy.com', 29900),
+   ('redalert3pc.ms1.gamespy.com', 28910),
+   ('redalert3services.gamespy.com', 80),
+   ('redalert3pc.sake.gamespy.com', 80),
+   ('psweb.gamespy.com', 80),
+   ('redalert3pc.auth.pubsvs.gamespy.com', 80),
+   ('redalert3pc.comp.pubsvs.gamespy.com', 80),
+   ('redalert3pc.natneg1.gamespy.com', 80),
+   ('redalert3pc.natneg2.gamespy.com', 80),
+   ('redalert3pc.natneg3.gamespy.com', 80),
+]
+
+
 class Service(MultiService):
-   def __init__(self, addresses=None):
+   def __init__(self):
       MultiService.__init__(self)
       sCtx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
 

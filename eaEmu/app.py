@@ -1,19 +1,17 @@
-#!/usr/bin/env python2.6
+from __future__ import print_function
 import warnings
 warnings.simplefilter('ignore', DeprecationWarning)
 
 import re
 import traceback
 import os
-import logging
-import logging.config
 import sys
 from socket import gethostbyname
 
 from twisted.internet import reactor
-from twisted.python import log
 from twisted.application.service import Application
 
+## TODO: move these to modules
 servers = {
    # TODO: maybe move port #'s and hosts into the classes themselves?
 
@@ -43,25 +41,6 @@ servers = {
       ('pcburnout08.ea.com', 21841), # makes theater(ish) server at port +1
    ],
 
-   # RA 3
-   'eaEmu.ea.games.redalert3.Service':[
-      ('cncra3-pc.fesl.ea.com', 18840),
-      #('cncra3-pc.theater.ea.com', 18845), # not in use by EA, not strictly needed anyway
-      ('redalert3pc.available.gamespy.com', 27900),
-      ('na.llnet.eadownloads.ea.com', 80), # this is used in 1.4
-      #('servserv.generals.ea.com', 80), # this is used in 1.0
-      ('peerchat.gamespy.com', 6667),
-      ('gpcm.gamespy.com', 29900),
-      ('redalert3pc.ms1.gamespy.com', 28910),
-      ('redalert3services.gamespy.com', 80),
-      ('redalert3pc.sake.gamespy.com', 80),
-      ('psweb.gamespy.com', 80),
-      ('redalert3pc.auth.pubsvs.gamespy.com', 80),
-      ('redalert3pc.comp.pubsvs.gamespy.com', 80),
-      ('redalert3pc.natneg1.gamespy.com', 80),
-      ('redalert3pc.natneg2.gamespy.com', 80),
-      ('redalert3pc.natneg3.gamespy.com', 80),
-   ],
    # Need for Speed SHIFT (a.k.a. pro street 2)
    'eaEmu.ea.games.nfsps2.Service':[
       ('nfsps2-pc.fesl.ea.com', 18201),
@@ -74,29 +53,9 @@ servers = {
    ],
 }
 
-class LogObs(log.PythonLoggingObserver):
-   def emit(self, eventDict):
-      text = log.textFromEventDict(eventDict)
-      if text is None:
-         return
-
-      if 'logLevel' in eventDict:
-         self.logger.log(eventDict['logLevel'], text)
-      elif eventDict['isError']:
-         self.logger.exception(text)
-      else:
-         self.logger.info(text)
-
 ## TODO: deprecate main in favor of Application + twistd
 def main(argv=None):
    argv = argv or sys.argv
-
-   logCfg = 'logging.cfg'
-   if os.path.isfile(logCfg):
-      logging.config.fileConfig(logCfg)
-      LogObs().start()
-   else:
-      print '{0} not found -- network traffic logging disabled.'.format(logCfg)
 
    interface = None
    try:
@@ -104,7 +63,7 @@ def main(argv=None):
       import eaEmu.ui.wx.wxMain
       interface = ui.wx.wxMain
    except:
-      print 'Couldn\'t import WX, running in console-only mode.'
+      print('Couldn\'t import WX, running in console-only mode.')
 
    if interface:
       ## TODO: see twistd --help-reactors and use that to launch gui mode
@@ -112,35 +71,29 @@ def main(argv=None):
       interface.servers = servers #TODO: decouple this list from main methods
       interface.main(argv)
    else:
+      from twisted.python import log
       log.startLogging(sys.stdout)
-      for serviceName in [
-         #'eaEmu.ea.games.cnc4.Service',
-         'eaEmu.ea.games.redalert3.Service',
-         #'eaEmu.ea.games.nfsps2.Service',
-         ]:
+      for serviceName in defaultServices:
          addresses = servers[serviceName]
          mod, name = serviceName.rsplit('.', 1)
-         service = getattr(__import__(mod, fromlist=[name]), name)(addresses)
+         service = getattr(__import__(mod, fromlist=[name]), name)()
          service.startService()
       reactor.run()
 
-def getApplication():
-   logCfg = 'logging.cfg'
-   if os.path.isfile(logCfg):
-      logging.config.fileConfig(logCfg)
-      LogObs().start()
-   else:
-      print '{0} not found -- network traffic logging disabled.'.format(logCfg)
 
-   application = Application('EA Online Server Emulator')
-   for serviceName in [
+defaultServices = [
       #'eaEmu.ea.games.cnc4.Service',
       'eaEmu.ea.games.redalert3.Service',
       #'eaEmu.ea.games.nfsps2.Service',
-      ]:
+]
+
+def getApplication(services=defaultServices):
+
+   application = Application('EA Online Server Emulator')
+   for serviceName in services:
       addresses = servers[serviceName]
       mod, name = serviceName.rsplit('.', 1)
-      service = getattr(__import__(mod, fromlist=[name]), name)(addresses)
+      service = getattr(__import__(mod, fromlist=[name]), name)()
       service.setServiceParent(application)
 
    return application
