@@ -1,1 +1,1 @@
-from eaEmu.plugin import *
+from eaEmu.twistd import *
