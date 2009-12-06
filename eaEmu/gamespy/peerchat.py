@@ -498,8 +498,8 @@ class DbGroup(db.Channel):
             if usr.mind is None:
                ## HACK: this prunes clients that exited badly
                self.users.remove(usr)
-            dfr = defer.maybeDeferred(user.mind.userLeft, self, client, reason)
-            dfr.addErrback(self._ebUserCall, client=user.mind)
+            dfr = defer.maybeDeferred(usr.mind.userLeft, self, client, reason)
+            dfr.addErrback(self._ebUserCall, client=usr.mind)
             calls.append(dfr)
          return defer.DeferredList(calls).addCallback(cbUsersRemoved)
       else:
