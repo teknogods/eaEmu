@@ -1,4 +1,3 @@
-#last edited on: 2007.07.20
 import distutils.core, py2exe
 import sys, os, shutil
 import os

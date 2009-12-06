@@ -1,3 +1,4 @@
+## TODO: this file is just dregs ATM
 from __future__ import print_function
 import warnings
 warnings.simplefilter('ignore', DeprecationWarning)
@@ -9,7 +10,6 @@ import sys
 from socket import gethostbyname
 
 from twisted.internet import reactor
-from twisted.application.service import Application
 
 ## TODO: move these to modules
 servers = {
@@ -53,6 +53,12 @@ servers = {
    ],
 }
 
+defaultServices = [
+      #'eaEmu.ea.games.cnc4.Service',
+      'eaEmu.ea.games.redalert3.Service',
+      #'eaEmu.ea.games.nfsps2.Service',
+]
+
 ## TODO: deprecate main in favor of Application + twistd
 def main(argv=None):
    argv = argv or sys.argv
@@ -79,24 +85,5 @@ def main(argv=None):
          service.startService()
       reactor.run()
 
-
-defaultServices = [
-      #'eaEmu.ea.games.cnc4.Service',
-      'eaEmu.ea.games.redalert3.Service',
-      #'eaEmu.ea.games.nfsps2.Service',
-]
-
-def getApplication(services=defaultServices):
-
-   application = Application('EA Online Server Emulator')
-   for serviceName in services:
-      mod, name = serviceName.rsplit('.', 1)
-      service = getattr(__import__(mod, fromlist=[name]), name)()
-      service.setServiceParent(application)
-
-   return application
-
 if __name__ == '__main__':
    main()
-else:
-   application = getApplication()

@@ -250,16 +250,16 @@ class Peerchat(IRCUser, object):
 
       def cbGroup(group):
          if nick == '*':
-            #users = db.Channels.objects.get(name=group.name).users.filter(loginsession__isnull=False) ## HACK race condition here?
+            #users = db.Channels.objects.get(name__iexact=group.name).users.filter(loginsession__isnull=False) ## HACK race condition here?
             users = group.iterusers()
          else:
-            users = [db.Persona.objects.get(name=nick).user]
+            users = [db.Persona.objects.get(name__iexact=nick).user]
 
          for user in users:
             # TODO: add get_username getter to Stats, once properties are supported, to fetch the ircUser string
             #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
             uName = user.getPersona().name
-            stats = db.Stats.objects.get_or_create(persona=user.getPersona(), channel=db.Channel.objects.get(name=grp))[0] #TODO: defer
+            stats = db.Stats.objects.get_or_create(persona=user.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0] #TODO: defer
             response = stats.dumpFields(fields)
             self.sendMessage('702', chan, uName, rId, response)
          self.sendMessage('703', chan, rId, ':End of GETCKEY')
@@ -280,7 +280,7 @@ class Peerchat(IRCUser, object):
       def saveToDb():
          if 'b_arenaTeamID' in changes:
             changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
-         stats = db.Stats.objects.get_or_create(persona=self.avatar.getPersona(), channel=db.Channel.objects.get(name=grp))[0]
+         stats = db.Stats.objects.get_or_create(persona=self.avatar.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0]
          for k, v in changes.iteritems(): setattr(stats, k, v)
          stats.save()
          return stats
@@ -416,12 +416,6 @@ class PeerchatFactory(IRCFactory):
       IRCFactory.__init__(self, realm, PeerchatPortal(realm))
 
 
-## clear out static chans at startup
-## TODO: move or redesign this
-## maybe at DbGroup init build grp.users out of grp.clients?
-for chan in db.Channel.objects.all():
-   chan.users.clear()
-
 
 ## INTEGRAGTION TODO:
 ## follow naming, callback convention, db abstraction
@@ -450,54 +444,66 @@ class DbGroup(db.Channel):
       ## these lists unfortunately have to be maintained separately :/
       ## TODO: handle this tracking better
 
+   ## used by methods that rely on deferredlists to do something to all users
    def _ebUserCall(self, err, client):
       return failure.Failure(Exception(client, err))
 
+   ## used by methods that rely on deferredlists to do something to all users
    def _cbUserCall(self, results):
       for (success, result) in results:
          if not success:
-            clientuser, err = result.value # XXX <-- (not by elitak)
+            ## remove the user from the channel
+            clientuser, err = result.value
             self.remove(clientuser, err.getErrorMessage())
 
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
-      if client.avatar not in self.users.all():
+      if not self.users.filter(id=client.avatar.id).count(): ## if not in channel
          ## set mode for user in this channel
-         info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)
+         info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
 
-         additions = []
-         if self.users.count() == 0 and self.name.startswith('GSP'):
+         if self.users.count() == 0 and self.name.lower().startswith('gsp'):
             client.avatar.setChanMode(self, '+o')
             ## first in private chan, promote to op
          self.users.add(client.avatar) ## TODO: deferred
          ## notify other clients in this group
+         calls = []
          for usr in self.users.exclude(id=client.avatar.id): ## better way to write this?
-            usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
-            clt = usr.mind
-            if clt is None:
-               continue ## HACK: this skips clients that exit badly
-            d = defer.maybeDeferred(clt.userJoined, self, client)
-            d.addErrback(self._ebUserCall, client=clt)
-            additions.append(d)
+            usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
+            if usr.mind is None:
+               ## HACK: this prunes clients that exited badly
+               self.users.remove(usr)
+            dfr = defer.maybeDeferred(usr.mind.userJoined, self, client)
+            dfr.addErrback(self._ebUserCall, client=usr.mind)
+            calls.append(dfr)
          ## callbacks for Deferreds in a DeferredList are fired only once all have completed
-         defer.DeferredList(additions).addCallback(self._cbUserCall)
-      return defer.succeed(None)
+         return defer.DeferredList(calls).addCallback(self._cbUserCall)
+      else:
+         return failure.Failure(Exception('User already in channel.'))
 
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
-      if client.avatar in self.users.all():
+
+      def cbUsersRemoved(results):
+         if self.name.lower().startswith('gsp') and self.users.count() == 0:
+            self.delete()
+         return results
+
+      if self.users.filter(id=client.avatar.id).count(): ## if in channel
          self.users.remove(client.avatar)
-         removals = []
+         ## notify other clients in this group
+         calls = []
          for usr in self.users.exclude(id=client.avatar.id):
-            usr = DbUser(id=usr.id) ##HACKY, dont like this, need to because User is returned with no 'mind' attr
-            clt = usr.mind
-            if clt is None:
-               continue ## HACK: this is need for clients that exit badly
-            d = defer.maybeDeferred(clt.userLeft, self, client, reason)
-            d.addErrback(self._ebUserCall, client=clt)
-            removals.append(d)
-         defer.DeferredList(removals).addCallback(self._cbUserCall)
-      return defer.succeed(None)
+            usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
+            if usr.mind is None:
+               ## HACK: this prunes clients that exited badly
+               self.users.remove(usr)
+            dfr = defer.maybeDeferred(user.mind.userLeft, self, client, reason)
+            dfr.addErrback(self._ebUserCall, client=user.mind)
+            calls.append(dfr)
+         return defer.DeferredList(calls).addCallback(cbUsersRemoved)
+      else:
+         raise Exception('User not in channel.')
 
    def iterusers(self):
       ## TODO: deferToThread
@@ -535,7 +541,7 @@ class DbUser(db.User):
 
    @classmethod
    def getUser(cls, name):
-      return DbUser.objects.get(id=db.Persona.objects.get(name=name).user.id)
+      return DbUser.objects.get(id=db.Persona.objects.get(name__iexact=name).user.id)
 
    ## NOTE that we cant use this field in queries!
    def _get_name(self):
@@ -624,21 +630,51 @@ class PeerchatRealm(WordsRealm):
       group.save()
       return defer.succeed(group)
 
+   createUserOnRequest = False
+
    def lookupUser(self, name):
       assert isinstance(name, unicode)
       return threads.deferToThread(DbUser.getUser, name)
 
+   ## getGroup in parent class will call createGroup
+   createGroupOnRequest = True
+
+   def getGroup(self, name):
+      def ebGroup(err):
+         ## this will trap if user tried to make chan not starting with 'GSP'
+         err.trap(Exception) ##TODO: make nopermstocreate exc
+         return self.lookupGroup(name)
+
+      return WordsRealm.getGroup(self, name).addErrback(ebGroup)
+
    def lookupGroup(self, name):
       assert isinstance(name, unicode)
 
-      def getGroup(name):
-         if name.startswith('GSP'):
-            grp = DbGroup.objects.get_or_create(name=name, prettyName=name, game=db.Game.objects.get(name=name.split('!')[1]))[0] ## TODO:better way to provide game?
+      def dbCall():
+         if name.lower().startswith('gsp'):
+            game = db.Game.objects.get(name__iexact=name.split('!')[1]) ## TODO:better way to provide game?
+            ## can't use __iexact in get_or_create!, btw (learned this before i split lookup/create)
+            grp = DbGroup.objects.get(name__iexact=name, prettyName__iexact=name, game=game)
          else:
-            grp = DbGroup.objects.get(name=name)
+            grp = DbGroup.objects.get(name__iexact=name)
          return grp
 
-      return threads.deferToThread(getGroup, name=name)
+      return threads.deferToThread(dbCall)
+
+   def createGroup(self, name):
+      assert isinstance(name, unicode)
+
+      def dbCall():
+         if name.lower().startswith('gsp'):
+            game = db.Game.objects.get(name__iexact=name.split('!')[1]) ## TODO:better way to provide game?
+            if DbGroup.objects.filter(name__iexact=name, prettyName__iexact=name, game=game).count():
+               raise Exception('Tried to create private channel that already exists.')
+            grp = DbGroup.objects.create(name=name, prettyName=name, game=game)
+         else:
+            raise Exception('Creation of public channels is disallowed.')
+         return grp
+
+      return threads.deferToThread(dbCall)
 
 class PeerchatPortal(Portal):
    def __init__(self, realm):
@@ -752,3 +788,11 @@ class PeerchatEncryption(object):
       self.sendMessage('705', self.cCipher.challenge, self.sCipher.challenge)
       self.doCrypt = True ## encrypt traffic henceforth
       yield aspects.proceed
+
+
+## clear out static chans at startup
+## TODO: move or redesign this
+## maybe at DbGroup init build grp.users out of grp.clients?
+for chan in DbGroup.objects.all():
+   chan.users.clear()
+

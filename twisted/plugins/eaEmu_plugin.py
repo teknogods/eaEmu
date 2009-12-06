@@ -26,7 +26,7 @@ class EaEmuServiceFactory(object):
 ## share port 80... dont think so.
 class Ra3Options(usage.Options):
    optParameters = [
-       ['webport', 'p', 80, 'The port to run the http web services on.', portCoerce],
+       ['webPort', 'p', 80, 'The port to run the http web services on.', portCoerce],
    ]
 
 class Ra3ServiceFactory(object):

@@ -14,7 +14,7 @@ class LogObs(log.PythonLoggingObserver):
 
       if 'logLevel' in eventDict:
          self.logger.log(eventDict['logLevel'], text)
-      elif eventDict['isError']:
+      elif eventDict.get('isError', False) and not eventDict.get('printed', False):
          self.logger.exception(text)
       else:
          self.logger.info(text)
