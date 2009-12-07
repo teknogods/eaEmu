@@ -409,7 +409,7 @@
         <dia:point val="1.7,3.05"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="1.65,3;16.88,10.7"/>
+        <dia:rectangle val="1.65,3;16.88,11.5"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
         <dia:point val="1.7,3.05"/>
@@ -418,7 +418,7 @@
         <dia:real val="15.130000000000001"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
-        <dia:real val="7.5999999999999996"/>
+        <dia:real val="8.4000000000000004"/>
       </dia:attribute>
       <dia:attribute name="name">
         <dia:string>#User#</dia:string>
@@ -539,7 +539,7 @@
             <dia:string>#varchar(32)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True#</dia:string>
+            <dia:string>#null=True#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -562,7 +562,7 @@
             <dia:string>#varchar(32)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#blank=True#</dia:string>
+            <dia:string>#null=True#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -654,7 +654,30 @@
             <dia:string>#varchar(32)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
+            <dia:string>#null=True#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
             <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#active#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#boolean#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#default=True#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>

@@ -255,15 +255,23 @@ class Peerchat(IRCUser, object):
          else:
             users = [db.Persona.objects.get(name__iexact=nick).user]
 
+         calls = []
          for user in users:
             # TODO: add get_username getter to Stats, once properties are supported, to fetch the ircUser string
             #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
-            uName = user.getPersona().name
-            stats = db.Stats.objects.get_or_create(persona=user.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0] #TODO: defer
-            response = stats.dumpFields(fields)
-            self.sendMessage('702', chan, uName, rId, response)
-         self.sendMessage('703', chan, rId, ':End of GETCKEY')
-         # 702 = RPL_GETCKEY? -- not part of RFC 1459
+            name = user.getPersona().name
+            def cbStats(stats):
+               response = stats.dumpFields(fields)
+               self.sendMessage('702', chan, name, rId, response)
+
+            calls.append(db.Stats.getStats(name, group.name))
+            calls[-1].addCallback(cbStats)
+            #objects.get_or_create(persona=user.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0] #TODO: defer
+
+         def cbDone(results):
+            self.sendMessage('703', chan, rId, ':End of GETCKEY')
+            # 702 = RPL_GETCKEY? -- not part of RFC 1459
+         defer.DeferredList(calls).addCallback(cbDone)
 
       self.realm.lookupGroup(grp).addCallbacks(cbGroup, ebGroup)
 

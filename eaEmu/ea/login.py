@@ -242,7 +242,7 @@ class EaServer(Protocol):
 
    def sendMessage(self, msg):
       self.log.debug('sent {0}'.format(msg))
-      self.log.debug('sent {0}\n'.format(hexdump(repr(msg))))
+      #self.log.debug('sent {0}\n'.format(hexdump(repr(msg))))
       self.transport.write(repr(msg))
 
    # TODO: move to own abstract class for multiple inheritance??

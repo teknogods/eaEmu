@@ -1,3 +1,5 @@
+from datetime import datetime
+
 #from twisted.internet import defer
 from twisted.internet import threads
 
@@ -87,8 +89,9 @@ class User(models.User):
       def add():
          try:
             return Persona.objects.create(user=self, name=name)
-         except Exception, ex:
-            raise EaError.NameTaken
+         except Exception, ex: ## TODO make this an errback
+            ## errbacks are better than try catches in async calls because it allows the caller to chain on extra except-blocks
+            raise EaError.NameTaken ## TODO: find out what this is for mysql (sqlite3.IntegrityError) how to make generic?
       return threads.deferToThread(add)
 
    def getPersonas(self):
@@ -102,15 +105,21 @@ def getPersona(self):
    return self.persona_set.get(selected=True)
 models.User.getPersona = getPersona
 
-class Persona(models.Persona):
-   __metaclass__ = djProxy
+def getUser(cls, **kw):
+   '''
+   Retrieves the User object that this Persona belongs to.
+   '''
+   return cls.objects.get(**kw).user
+models.Persona.getUser = classmethod(getUser)
 
-   @classmethod
-   def getUser(cls, **kw):
-      '''
-      Retrieves the User object that this Persona belongs to.
-      '''
-      return cls.objects.get(**kw).user
+def getStats(cls, name, chanName):
+   def fetch():
+      persona = db.Persona.objects.get(name__iexact=name)
+      channel = db.Channel.objects.get(name__iexact=chanName)
+      return cls.objects.get_or_create(persona=persona, channel=channel)[0]
+   return threads.deferToThread(fetch)
+
+models.Stats.getStats = classmethod(getStats)
 
 class Session(models.LoginSession):
    __metaclass__ = djProxy
@@ -123,20 +132,27 @@ class Session(models.LoginSession):
       #self.key = 'SUeWiDsuck7mUGXCCn4oNAAAKDw.'
 
    def Login(self, user, pwd):
-      def getUser():
+      def fetch():
          try:
             self.user = User.objects.get(login=user)
          except User.DoesNotExist:
             raise EaError.UserNotFound
-         # delete any stale sessions before saving
+
+         ## HACK? delete any stale sessions before saving
          for e in Session.objects.filter(user=self.user):
             e.delete()
          self.save()
-         if pwd == self.user.password:
+
+         if not self.user.active:
+            ## FIXME: is there a special EaError for this?
+            raise EaError.BadPassword
+         elif pwd == self.user.password:
+            self.user.lastLogin = datetime.now()
+            self.user.save()
             return self.user
          else:
             raise EaError.BadPassword
-      return threads.deferToThread(getUser)
+      return threads.deferToThread(fetch)
 
 class Theater(models.Theater):
    __metaclass__ = djProxy

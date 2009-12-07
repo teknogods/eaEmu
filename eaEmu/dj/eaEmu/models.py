@@ -12,12 +12,13 @@ class Game(models.Model) :
 
 class User(models.Model) :
     login = models.CharField(max_length=32)
-    firstName = models.CharField(max_length=32, blank=True )
-    lastName = models.CharField(max_length=32, blank=True )
+    firstName = models.CharField(max_length=32, null=True )
+    lastName = models.CharField(max_length=32, null=True )
     password = models.CharField(max_length=32)
     created = models.DateTimeField(auto_now_add=True)
     lastLogin = models.DateTimeField(null=True)
-    email = models.CharField(max_length=32)
+    email = models.CharField(max_length=32, null=True )
+    active = models.BooleanField(default=True)
 
     def __unicode__(self):
         return u""
