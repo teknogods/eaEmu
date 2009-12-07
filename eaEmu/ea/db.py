@@ -1,4 +1,17 @@
+#from twisted.internet import defer
+from twisted.internet import threads
+
 from ..gamespy.cipher import *
+
+## TODO: migrate errors to db
+class EaError(Exception):
+   def __init__(self, id, text):
+      self.id = id
+      self.text = text
+
+EaError.BadPassword = EaError(122, 'The password the user specified is incorrect')
+EaError.UserNotFound = EaError(101, 'The user was not found')
+EaError.NameTaken = EaError(160, 'That account name is already taken')
 
 try:
    from ..dj import settings
@@ -71,7 +84,12 @@ class User(models.User):
       return self.__class__.objects.create(login=name, password=pwd)
 
    def addPersona(self, name):
-      return Persona.objects.create(user=self, name=name)
+      def add():
+         try:
+            return Persona.objects.create(user=self, name=name)
+         except Exception, ex:
+            raise EaError.NameTaken
+      return threads.deferToThread(add)
 
    def getPersonas(self):
       #return [str(x.name) for x in Persona.objects.filter(user=self)]
@@ -105,15 +123,20 @@ class Session(models.LoginSession):
       #self.key = 'SUeWiDsuck7mUGXCCn4oNAAAKDw.'
 
    def Login(self, user, pwd):
-      self.user = User.GetUser(login=user)
-      # delete any stale sessions before saving
-      for e in Session.objects.filter(user=self.user):
-         e.delete()
-      self.save()
-      if pwd == self.user.password:
-         return self.user
-      else:
-         return None #TODO: throw exception instead?
+      def getUser():
+         try:
+            self.user = User.objects.get(login=user)
+         except User.DoesNotExist:
+            raise EaError.UserNotFound
+         # delete any stale sessions before saving
+         for e in Session.objects.filter(user=self.user):
+            e.delete()
+         self.save()
+         if pwd == self.user.password:
+            return self.user
+         else:
+            raise EaError.BadPassword
+      return threads.deferToThread(getUser)
 
 class Theater(models.Theater):
    __metaclass__ = djProxy

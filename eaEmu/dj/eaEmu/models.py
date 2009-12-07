@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Game(models.Model) :
     name = models.CharField(max_length=16, unique=True )
     key = models.CharField(max_length=6, null=True )
@@ -159,7 +160,7 @@ class Player(models.Model) :
 
 class Persona(models.Model) :
     user = models.ForeignKey(User)
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=32, unique=True )
     selected = models.BooleanField(default=False)
     friends = models.ManyToManyField('self')
 

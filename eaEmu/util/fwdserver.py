@@ -1,13 +1,15 @@
 from twisted.protocols.portforward import *
 from twisted.internet import reactor
 from twisted.internet.ssl import ClientContextFactory
+from . import getLogger
+from . import hexdump
 
 def defDRClient(self, data):
-   self.log.debug('upstream responded: "{0}"'.format(data))
+   self.log.debug('upstream responded: \n{0}'.format(hexdump(data)))
    ProxyClient.dataReceived(self, data)
 
 def defDRServer(self, data):
-   self.log.debug('FwdServer received: "{0}"'.format(data))
+   self.log.debug('FwdServer received: \n{0}'.format(hexdump(data)))
    ProxyServer.dataReceived(self, data)
 
 def makeTCPFwdFactory(clientLog, serverLog, clientRecv=defDRClient, serverRecv=defDRServer):

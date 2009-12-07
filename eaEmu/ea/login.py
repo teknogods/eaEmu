@@ -114,17 +114,6 @@ def toEAMapping(map):
    d['{}'] = len(d)
    return d
 
-def fwdDRS(self, data):
-   for msg in Message.parseData(data):
-      ep = '{0.host}:{0.port}'.format(self.transport.getPeer())
-      msg.debugPrint(self.factory.log, 'server received (%s):' % ep)
-      ProxyServer.dataReceived(self, str(msg))
-def fwdDRC(self, data):
-   for msg in Message.parseData(data):
-      ep = '{0.host}:{0.port}'.format(self.transport.getPeer())
-      msg.debugPrint(self.factory.log, 'client received (%s):' % ep)
-      ProxyClient.dataReceived(self, str(msg))
-
 class EaLoginMessage(Message):
    def makeReply(self, map=None):
       reply = Message.makeReply(self, map)
@@ -253,7 +242,7 @@ class EaServer(Protocol):
 
    def sendMessage(self, msg):
       self.log.debug('sent {0}'.format(msg))
-      #self.log.debug('sent {0}'.format(repr(repr(msg))))
+      self.log.debug('sent {0}\n'.format(hexdump(repr(msg))))
       self.transport.write(repr(msg))
 
    # TODO: move to own abstract class for multiple inheritance??
@@ -312,45 +301,49 @@ class EaMsgHlr_Hello(MessageHandler):
 
 class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identical, derive this from mercs one
    def makeReply(self):
-      # dict:TXN=NuLogin,macAddr=$001bfcb369cb,nuid=xxxxxx,password=xxxxx,returnEncryptedInfo=1
-      map = {
-         'nuid': self.user.login,
-         'userId': self.user.id,
-         'profileId': self.user.id, # seems to be always the same as userId
-         'lkey':self.server.session.key,
-      }
-      if int(self.msg.returnEncryptedInfo):
-         # the contents of this string are unknown. It may consist of
-         # what's in the other branch.
-         # TODO: no clue on how this is encrypted. I bet the last 2 characters
-         # end up being '==' because thisVal=encrypt(b64encode(plaintext))
-         # The mystery is how does the client decrypt it??
-         # See also 'lkey', above. -- Also ends in '.', b64 pad char ;)
-         # It's not XORed with a 0x13 if you're wondering.
-
-         #map['encryptedLoginInfo'] = 'Ciyvab0tregdVsBtboIpeChe4G6uzC1v5_-SIxmvSLJ82DtYgFUjObjCwJ2gbAnB4mmJn_A_J6tn0swNLggnaFOnewWkbq09MOpvpX-Eu19Ypu3s6gXxJ3CTLLkvB-9UKI6qh-nfrXHs3Ij9FBzMrQ..'
-         map['encryptedLoginInfo'] = 'Ciyvab0tregdVsBtboIpeChe4G6uzC1v5_-SIxmvSLKqzcqC65kVfFSAEe3lLoY8ZEGkTOwgFM8xRqUuwICLMyhYLqhtMx2UYCllK0EZUodWU5w3jv7gny_kWfGnA6cKbRtwKAriv2OdJmPGsPDdGQ..'
-      else:
-         map['displayName'] = self.user.login
-         map['entitledGameFeatureWrappers'] = [{
-            'gameFeatureId':6014,
-            'status':0,
-            'message':'',
-            'entitlementExpirationDate':'',
-            'entitlementExpirationDays':-1,
-         }]
-      return self.msg.makeReply(map)
+      return self.msg.makeReply(self.replyMap)
 
    def handle(self):
-      # TODO: handle bad logins with proper messages
-      m = self.msg
-      self.user = self.server.session.Login(m.nuid, m.password)
-      if self.user:
-         self.Reply()
-      else:
-         # TODO send different reply here
-         print 'TODO: user not found or bad pwd'
+      def cbUser(user):
+         # dict:TXN=NuLogin,macAddr=$001bfcb369cb,nuid=xxxxxx,password=xxxxx,returnEncryptedInfo=1
+         self.replyMap = {
+            'nuid': user.login,
+            'userId': user.id,
+            'profileId': user.id, # seems to be always the same as userId
+            'lkey':self.server.session.key,
+         }
+         if int(self.msg.returnEncryptedInfo):
+            # the contents of this string are unknown. It may consist of
+            # what's in the other branch.
+            # TODO: no clue on how this is encrypted. I bet the last 2 characters
+            # end up being '==' because thisVal=encrypt(b64encode(plaintext))
+            # The mystery is how does the client decrypt it??
+            # See also 'lkey', above. -- Also ends in '.', b64 pad char ;)
+            # It's not XORed with a 0x13 if you're wondering.
 
+            #self.replyMap['encryptedLoginInfo'] = 'Ciyvab0tregdVsBtboIpeChe4G6uzC1v5_-SIxmvSLJ82DtYgFUjObjCwJ2gbAnB4mmJn_A_J6tn0swNLggnaFOnewWkbq09MOpvpX-Eu19Ypu3s6gXxJ3CTLLkvB-9UKI6qh-nfrXHs3Ij9FBzMrQ..'
+            self.replyMap['encryptedLoginInfo'] = 'Ciyvab0tregdVsBtboIpeChe4G6uzC1v5_-SIxmvSLKqzcqC65kVfFSAEe3lLoY8ZEGkTOwgFM8xRqUuwICLMyhYLqhtMx2UYCllK0EZUodWU5w3jv7gny_kWfGnA6cKbRtwKAriv2OdJmPGsPDdGQ..'
+         else:
+            self.replyMap['displayName'] = user.login
+            self.replyMap['entitledGameFeatureWrappers'] = [{
+               'gameFeatureId':6014,
+               'status':0,
+               'message':'',
+               'entitlementExpirationDate':'',
+               'entitlementExpirationDays':-1,
+            }]
+         self.Reply()
+
+      def ebUser(err):
+         err.trap(EaError)
+         self.replyMap = {
+            'localizedMessage' : '"{0}"'.format(err.value.text),
+            'errorContainer' : [],
+            'errorCode' : err.value.id,
+         }
+         self.Reply()
+      dfr = self.server.session.Login(self.msg.nuid, self.msg.password)
+      dfr.addCallbacks(cbUser, ebUser)
 
 class EaMsgHlr_NuGetPersonas(MessageHandler):
    # dict:TXN=NuGetPersonas,namespace=
@@ -359,14 +352,32 @@ class EaMsgHlr_NuGetPersonas(MessageHandler):
             'personas':self.server.session.user.getPersonas(),
       })
 
+##TODO:
+## newpersona too short
+## newpersona already taken
+
 class EaMsgHlr_NuAddPersona(MessageHandler):
+   def makeReply(self):
+      return self.msg.makeReply(self.replyMap)
+
    # dict:TXN=NuGetPersonas,namespace=
    def handle(self):
       # dict:TXN=NuAddPersona,name=PersonaName
-      self.server.session.user.addPersona(self.msg.map['name'])
+      def cbPersona(persona):
+         self.replyMap = {}
+         self.Reply()
 
-      # TODO: haven't captured an actual response to this, but this works
-      self.Reply()
+      def ebPersona(err):
+         err.trap(EaError)
+         self.replyMap = {
+            'localizedMessage' : '"{0}"'.format(err.value.text),
+            'errorContainer' : [],
+            'errorCode' : err.value.id,
+         }
+         self.Reply()
+
+      dfr = self.server.session.user.addPersona(self.msg.map['name'])
+      dfr.addCallbacks(cbPersona, ebPersona)
 
 class EaMsgHlr_NuLoginPersona(MessageHandler):
       # dict:TXN=NuLoginPersona,name=xxxxx

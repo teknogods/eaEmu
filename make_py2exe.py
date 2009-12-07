@@ -3,6 +3,11 @@ import sys, os, shutil
 import os
 from os.path import *
 
+## TODO: right now, the build process on windows is very sloppy
+## the following modules must be copied into the build dir in order
+## for this makefile to work:
+## django, ZSI, aspects.py
+
 dirsToSearch = [
    'eaEmu',
    'django',
