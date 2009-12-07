@@ -582,7 +582,7 @@
             <dia:string>#password#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
-            <dia:string>#varchar(32)#</dia:string>
+            <dia:string>#varchar(34)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
             <dia:string>##</dia:string>

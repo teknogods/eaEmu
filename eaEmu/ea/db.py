@@ -5,6 +5,106 @@ from twisted.internet import threads
 
 from ..gamespy.cipher import *
 
+def encode64(input_val, count, itoa64):
+   ''' Encode binary data from input_val to ASCII string.
+
+   Every six bits of input_val are represented by corresponding
+   char from 64-char length itoa64 array. That is 0 will be
+   represented in resulting string with char itoa64[0], 1 will
+   be represented with itoa64[1], ..., 63 will be represented
+   with itoa64[63].
+   '''
+   output = ''
+   i = 0
+
+   while i<count:
+      value = ord(input_val[i])
+      i = i+1
+      output = output + itoa64[value&0x3f]
+
+      if i < count:
+         value = value | (ord(input_val[i]) << 8)
+
+      output = output + itoa64[(value>>6)&0x3f]
+
+      i = i+1
+      if i >= count:
+         break
+
+      if i < count:
+         value = value | (ord(input_val[i]) << 16)
+
+      output = output + itoa64[(value>>12)&0x3f]
+
+      i = i+1
+      if i >= count:
+         break
+
+      output = output + itoa64[(value>>18)&0x3f]
+
+   return output
+
+def crypt_private(passwd, passwd_hash, hash_prefix='$H$'):
+   '''
+   Hash password, using same salt and number of
+   iterations as in passwd_hash.
+
+   This is useful when you want to check password match.
+   In this case you pass your raw password and password
+   hash to this function and then compare its return
+   value with password hash again:
+
+      is_valid = (crypt_private(passwd, hash) == hash)
+
+   hash_prefix is used to check that passwd_hash is of
+   supported type. It is compared with first 3 chars of
+   passwd_hash and if does not match error is returned.
+
+   NOTE: all arguments must be ASCII strings, not unicode!
+   If you want to support unicode passwords, you could
+   use any encoding you want. For compatibility with PHP
+   it is recommended to use UTF-8:
+
+   passwd_ascii = passwd.encode('utf-8')
+   is_valid = (crypt_private(passwd_ascii, hash) == hash)
+
+   Here hash is already assumed to be an ASCII string.
+
+   In case of error '*0' is usually returned. But if passwd_hash
+   begins with '*0', then '*1' is returned to prevent false
+   positive results of password check.
+   '''
+   itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+   output = '*0'
+   # Prevent output from being the same as passwd_hash, because
+   # this may lead to false positive password check results.
+   if passwd_hash[0:2] == output:
+      output = '*1'
+
+   # Check for correct hash type
+   if passwd_hash[0:3] != hash_prefix:
+      return output
+
+   count_log2 = itoa64.index(passwd_hash[3])
+   if count_log2<7 or count_log2>30:
+      return output
+   count = 1<<count_log2
+
+   salt = passwd_hash[4:12]
+   if len(salt) != 8:
+      return output
+
+   m = md5.new(salt)
+   m.update(passwd)
+   tmp_hash = m.digest()
+   for i in xrange(count):
+      m = md5.new(tmp_hash)
+      m.update(passwd)
+      tmp_hash = m.digest()
+
+   output = passwd_hash[0:12]+encode64(tmp_hash, 16, itoa64)
+   return output
+
 ## TODO: migrate errors to db
 class EaError(Exception):
    def __init__(self, id, text):
@@ -146,7 +246,8 @@ class Session(models.LoginSession):
          if not self.user.active:
             ## FIXME: is there a special EaError for this?
             raise EaError.BadPassword
-         elif pwd == self.user.password:
+         ## FIXME: stick with 1 auth type?
+         elif self.user.password in [pwd, crypt_private(pwd, self.user.password)]:
             self.user.lastLogin = datetime.now()
             self.user.save()
             return self.user
