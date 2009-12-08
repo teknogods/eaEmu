@@ -5,6 +5,7 @@ from twisted.internet import threads
 
 from ..gamespy.cipher import *
 
+## TODO: move these funcs
 def encode64(input_val, count, itoa64):
    ''' Encode binary data from input_val to ASCII string.
 
@@ -111,8 +112,10 @@ class EaError(Exception):
       self.id = id
       self.text = text
 
+## note that these strings are never displayed, so i left the ones i'm not sure about blank
 EaError.BadPassword = EaError(122, 'The password the user specified is incorrect')
-EaError.UserNotFound = EaError(101, 'The user was not found')
+EaError.AccountNotFound = EaError(101, 'The user was not found')
+EaError.AccountDisabled = EaError(102, '')
 EaError.NameTaken = EaError(160, 'That account name is already taken')
 
 try:
@@ -236,7 +239,7 @@ class Session(models.LoginSession):
          try:
             self.user = User.objects.get(login=user)
          except User.DoesNotExist:
-            raise EaError.UserNotFound
+            raise EaError.AccountNotFound
 
          ## HACK? delete any stale sessions before saving
          for e in Session.objects.filter(user=self.user):
@@ -245,7 +248,7 @@ class Session(models.LoginSession):
 
          if not self.user.active:
             ## FIXME: is there a special EaError for this?
-            raise EaError.BadPassword
+            raise EaError.AccountDisabled
          ## FIXME: stick with 1 auth type?
          elif self.user.password in [pwd, crypt_private(pwd, self.user.password)]:
             self.user.lastLogin = datetime.now()
