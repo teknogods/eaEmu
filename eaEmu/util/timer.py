@@ -55,7 +55,7 @@ class KeepaliveService(TimerService):
 
       def pingFail(failure):
          failure.trap(defer.TimeoutError)
-         print 'Call to %s timed out. Calling onTimeout and stopping service.' % (pingFunc.__name__,)
+         #print 'Call to %s timed out. Calling onTimeout and stopping service.' % (pingFunc.__name__,)
          self.onTimeout()
          self.stopService()
 

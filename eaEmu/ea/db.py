@@ -18,14 +18,12 @@ def phpHash(passwd, passwd_hash):
    phpAlph64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
    count_log2 = phpAlph64.index(passwd_hash[3])
    if count_log2<7 or count_log2>30:
-      #raise Exception('Bad count_log2')
-      return None
+      raise Exception('Bad count_log2')
    count = 1<<count_log2
 
    salt = passwd_hash[4:12]
    if len(salt) != 8:
-      #raise Exception('hash not long enough')
-      return None
+      raise Exception('hash not long enough')
 
    m = md5.new(salt)
    m.update(passwd)
@@ -187,7 +185,8 @@ class Session(models.LoginSession):
             ## FIXME: is there a special EaError for this?
             raise EaError.AccountDisabled
          ## FIXME: stick with 1 auth type?
-         elif self.user.password in [pwd, phpHash(pwd, self.user.password)]:
+         elif self.user.password.startswith('$H$') and phpHash(pwd, self.user.password) or \
+              self.user.password == pwd:
             self.user.lastLogin = datetime.now()
             self.user.save()
             return self.user

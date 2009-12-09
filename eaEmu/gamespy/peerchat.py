@@ -26,6 +26,7 @@ from ..util.timer import KeepaliveService
 
 @util.AttachMethod(db.Stats)
 def dumpFields(self, fields, withNames=False):
+   #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
    fieldVals = {}
    for fld in fields:
       if fld == 'username':
@@ -258,14 +259,13 @@ class Peerchat(IRCUser, object):
          calls = []
          for user in users:
             # TODO: add get_username getter to Stats, once properties are supported, to fetch the ircUser string
-            #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
             name = user.getPersona().name
-            def cbStats(stats):
+            def cbStats(stats, name): ## name must be passed in, as it will change between callbacks!!
                response = stats.dumpFields(fields)
                self.sendMessage('702', chan, name, rId, response)
 
             calls.append(db.Stats.getStats(name, group.name))
-            calls[-1].addCallback(cbStats)
+            calls[-1].addCallback(cbStats, name)
             #objects.get_or_create(persona=user.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0] #TODO: defer
 
          def cbDone(results):
