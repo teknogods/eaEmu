@@ -18,12 +18,14 @@ def phpHash(passwd, passwd_hash):
    phpAlph64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
    count_log2 = phpAlph64.index(passwd_hash[3])
    if count_log2<7 or count_log2>30:
-      raise Exception('Bad count_log2')
+      #raise Exception('Bad count_log2')
+      return None
    count = 1<<count_log2
 
    salt = passwd_hash[4:12]
    if len(salt) != 8:
-      raise Exception('hash not long enough')
+      #raise Exception('hash not long enough')
+      return None
 
    m = md5.new(salt)
    m.update(passwd)
@@ -41,16 +43,16 @@ def phpHash(passwd, passwd_hash):
    hextets = reverse64(tmp_hash)
    return passwd_hash[0:12] + base64._translate(reverse64(tmp_hash), dict(zip(regAlph64, phpAlph64)))
 
-## TODO: migrate errors to db
+## TODO: migrate errors to db?
 class EaError(Exception):
-   def __init__(self, id, text):
+   def __init__(self, id, text=''):
       self.id = id
       self.text = text
 
 ## note that these strings are never displayed, so i left the ones i'm not sure about blank
 EaError.BadPassword = EaError(122, 'The password the user specified is incorrect')
 EaError.AccountNotFound = EaError(101, 'The user was not found')
-EaError.AccountDisabled = EaError(102, '')
+EaError.AccountDisabled = EaError(102)
 EaError.NameTaken = EaError(160, 'That account name is already taken')
 
 try:
