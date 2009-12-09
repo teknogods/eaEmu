@@ -1,45 +1,10 @@
-import md5
-import base64
 from datetime import datetime
 
 #from twisted.internet import defer
 from twisted.internet import threads
 
 from ..gamespy.cipher import *
-
-def phpHash(passwd, passwd_hash):
-   '''
-   This algorithm is adapted from the Portable PHP Password Hashing Framework by Alexander Chemeris
-   http://www.openwall.com/phpass/
-
-   It was written pretty sloppily, so I cleaned it up.
-   '''
-   regAlph64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-   phpAlph64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-   count_log2 = phpAlph64.index(passwd_hash[3])
-   if count_log2<7 or count_log2>30:
-      raise Exception('Bad count_log2')
-   count = 1<<count_log2
-
-   salt = passwd_hash[4:12]
-   if len(salt) != 8:
-      raise Exception('hash not long enough')
-
-   m = md5.new(salt)
-   m.update(passwd)
-   tmp_hash = m.digest()
-   for i in xrange(count):
-      m = md5.new(tmp_hash)
-      m.update(passwd)
-      tmp_hash = m.digest()
-
-   def reverse64(data):
-      np = 3 - len(data) % 3
-      data = data + ''.join('\x00' for _ in range(np))
-      return base64.b64encode(data[::-1])[:np-1 if np else None:-1]
-   ## PHP base64 takes reads hexlets right to left rather than left to right...
-   hextets = reverse64(tmp_hash)
-   return passwd_hash[0:12] + base64._translate(reverse64(tmp_hash), dict(zip(regAlph64, phpAlph64)))
+from ..util.password import *
 
 ## TODO: migrate errors to db?
 class EaError(Exception):
@@ -156,7 +121,6 @@ def getStats(cls, name, chanName):
       channel = db.Channel.objects.get(name__iexact=chanName)
       return cls.objects.get_or_create(persona=persona, channel=channel)[0]
    return threads.deferToThread(fetch)
-
 models.Stats.getStats = classmethod(getStats)
 
 class Session(models.LoginSession):
@@ -185,8 +149,7 @@ class Session(models.LoginSession):
             ## FIXME: is there a special EaError for this?
             raise EaError.AccountDisabled
          ## FIXME: stick with 1 auth type?
-         elif self.user.password.startswith('$H$') and phpHash(pwd, self.user.password) or \
-              self.user.password == pwd:
+         elif any(checker(self.user.password).check(pwd) for checker in [PhpPassword, PlainTextPassword]):
             self.user.lastLogin = datetime.now()
             self.user.save()
             return self.user
