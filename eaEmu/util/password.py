@@ -1,6 +1,41 @@
 import md5
 import base64
 
+def reverse64encode(data):
+   '''
+   PHP base64 takes reads hextets right to left rather than left to right, so
+   this function can be used to encode a binary string in that sequence.
+   '''
+   np = 3 - len(data) % 3 ## number of pad chars
+   data = ''.join('\x00' for _ in range(np)) + data[::-1]
+   return base64.b64encode(data)[:np-1 if np else None:-1]
+
+_phpAlph64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+def php64translate(b64data):
+   '''
+   Translates from the regular base64 alphabet to the one used by php --
+   no padding and rearranged alphabet.
+   '''
+   return b64translate(b64data, _phpAlph64)
+
+_translation = [chr(_x) for _x in range(256)]
+
+def b64translate(b64data, newAlph):
+   '''
+   Applies a translation to base64 data.
+
+   newAlph should be a string of chars from vals 0..63, then the optional pad char.
+   '''
+   alph = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+   if len(newAlph) < 64:
+      raise Exception('Alphabet too short.')
+   elif len(newAlph) == 64:
+      newAlph += '=' ## default pad byte
+   translation = _translation[:]
+   for k, v in dict(zip(alph, newAlph)).iteritems():
+      translation[ord(k)] = v
+   return b64data.translate(''.join(translation))
+
 class PasswordChecker(object):
    def __init__(self, password):
       self.password = password
@@ -16,8 +51,6 @@ class PhpPassword(PasswordChecker):
    def __init__(self, input):
       super(type(self), self).__init__(input)
       self.prefix = '$H$'
-      self.regAlph64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-      self.phpAlph64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
    def check(self, input):
       '''
@@ -29,7 +62,7 @@ class PhpPassword(PasswordChecker):
       if not self.password.startswith(self.prefix) or len(self.password) < 12:
          return False
 
-      count_log2 = self.phpAlph64.index(self.password[3])
+      count_log2 = _phpAlph64.index(self.password[3])
       if count_log2<7 or count_log2>30:
          #raise Exception('Bad count_log2')
          return False
@@ -47,10 +80,4 @@ class PhpPassword(PasswordChecker):
          m.update(input)
          tmp_hash = m.digest()
 
-      def reverse64(data):
-         np = 3 - len(data) % 3 ## number of pad chars
-         data = ''.join('\x00' for _ in range(np)) + data[::-1]
-         return base64.b64encode(data)[:np-1 if np else None:-1]
-      ## PHP base64 takes reads hexlets right to left rather than left to right...
-      match = self.password == self.password[:12] + base64._translate(reverse64(tmp_hash), dict(zip(self.regAlph64, self.phpAlph64)))
-      return match
+      return self.password == self.password[:12] + php64translate(reverse64encode(tmp_hash))
