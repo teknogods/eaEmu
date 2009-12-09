@@ -34,9 +34,9 @@ def phpHash(passwd, passwd_hash):
       tmp_hash = m.digest()
 
    def reverse64(data):
-      numPads = 3 - len(data) % 3
-      data = data + ''.join('\x00' for _ in range(numPads))
-      return base64.b64encode(data[::-1])[:numPads-1:-1]
+      np = 3 - len(data) % 3
+      data = data + ''.join('\x00' for _ in range(np))
+      return base64.b64encode(data[::-1])[:np-1 if np else None:-1]
    ## PHP base64 takes reads hexlets right to left rather than left to right...
    hextets = reverse64(tmp_hash)
    return passwd_hash[0:12] + base64._translate(reverse64(tmp_hash), dict(zip(regAlph64, phpAlph64)))
