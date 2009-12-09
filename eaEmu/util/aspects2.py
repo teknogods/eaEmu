@@ -2,20 +2,30 @@ from types import FunctionType
 
 from aspects import *
 
-def Aspect(targetClass):
+class Aspect(object):
    '''
-   This is a function that creates a class decorator that will wrap all of the
+   This is a class that creates a class decorator when called
+   that will wrap all of the
    targeted class's methods with those defined in the class
-   that is passed to it.
+   that is passed to the decorator function.
    '''
-   def decorator(aspectClass):
-      for key in aspectClass.__dict__:
-          ## getattr won't work!! The method will be "bound" to 
-          ## 'klass' and assert that 'self' is of the correct type
-          #attr = getattr(klass, key)
-          attr = aspectClass.__dict__[key]
-          if type(attr) is FunctionType:
-                  with_wrap(attr, getattr(targetClass, key))
+   def __init__(self, targetClass):
+      self.targetClass = targetClass
+
+   def __call__(self, klass):
+      for key, value in klass.__dict__.iteritems():
+         if not hasattr(self.targetClass, key):
+            ## if defining a new attribute, just assign it
+            setattr(self.targetClass, key, value)
+         else:
+            ## getattr won't work!! If used, the method will be bound to
+            ## 'klass' and consequently assert that 'self' is of the correct type
+            ## when invoked.
+            #attr = getattr(klass, key)
+            attr = klass.__dict__[key]
+            if type(attr) is FunctionType:
+                  with_wrap(attr, getattr(self.targetClass, key))
                   #print 'wrapped', key
-   return decorator
+      ## no need to return anything, the decorated class shouldn't exist
+      ## -- the act of decorating it wraps its targetClass
 

@@ -11,16 +11,16 @@ def reverse64encode(data):
    return base64.b64encode(data)[:np-1 if np else None:-1]
 
 _phpAlph64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-def php64translate(b64data):
+def php64translate(b64data, reverse=False):
    '''
    Translates from the regular base64 alphabet to the one used by php --
    no padding and rearranged alphabet.
    '''
-   return b64translate(b64data, _phpAlph64)
+   return b64translate(b64data, _phpAlph64, reverse)
 
 _translation = [chr(_x) for _x in range(256)]
 
-def b64translate(b64data, newAlph):
+def b64translate(b64data, newAlph, reverse=False):
    '''
    Applies a translation to base64 data.
 
@@ -32,7 +32,10 @@ def b64translate(b64data, newAlph):
    elif len(newAlph) == 64:
       newAlph += '=' ## default pad byte
    translation = _translation[:]
-   for k, v in dict(zip(alph, newAlph)).iteritems():
+   tTable = dict(zip(alph, newAlph))
+   if reverse:
+      tTable = dict(zip(newAlph, alph))
+   for k, v in tTable.iteritems():
       translation[ord(k)] = v
    return b64data.translate(''.join(translation))
 

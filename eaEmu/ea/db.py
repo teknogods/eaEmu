@@ -1,3 +1,5 @@
+import random
+import base64
 from datetime import datetime
 
 #from twisted.internet import defer
@@ -5,6 +7,7 @@ from twisted.internet import threads
 
 from ..gamespy.cipher import *
 from ..util.password import *
+from ..util import aspects2 as aspects
 
 ## TODO: migrate errors to db?
 class EaError(Exception):
@@ -27,7 +30,7 @@ try:
    import django.db.models
 
    from ..dj.eaEmu import models
-   from ..dj.eaEmu.models import GameList, Player, EnterGameRequest, Persona
+   from ..dj.eaEmu.models import GameList, Player, EnterGameRequest, Persona, LoginSession
 except Exception, e:
    print 'Exception while importing django modules:', e
    # generate dummy classes here so we can at least load up
@@ -52,6 +55,14 @@ except Exception, e:
 #   lists = [] # gamelists in this partition
 #   id = ''
 #   name = ''
+
+class djAppend(django.db.models.base.ModelBase):
+   def __new__(cls, name, bases, attrs):
+      baseModel = bases[0]
+      for attr in attrs:
+         setattr(baseModel, attr.__name__, attr)
+      new_class =  django.db.models.base.ModelBase.__new__(cls, name, bases, attrs)
+
 
 class djProxy(django.db.models.base.ModelBase):
    def __new__(cls, name, bases, attrs):
@@ -123,15 +134,25 @@ def getStats(cls, name, chanName):
    return threads.deferToThread(fetch)
 models.Stats.getStats = classmethod(getStats)
 
-class Session(models.LoginSession):
-   __metaclass__ = djProxy
-   def __init__(self, *args, **kw):
-      super(Session, self).__init__(*args, **kw)
-      self.key = hash(self)
+class ModelExtend(object):
+   def __init__(self, model):
+      self.model = model
 
-      # TODO: decrypt,generate this
+   def __call__(self, klass):
+      import inspect
+      for k, v in inspect.getmembers(klass):
+         setattr(self.model, k, v)
+      return self.model
+
+@aspects.Aspect(models.LoginSession)
+class _LoginSession:
+   def __init__(self, *args, **kw):
+      ## TODO: decrypt,generate this
       #self.key = 'SUeWiB5BXq4h6R8PCn4oPAAAKD0.'
       #self.key = 'SUeWiDsuck7mUGXCCn4oNAAAKDw.'
+      ## this is really some kind of special alphabet b64 encode, but doesnt matter for now...
+      kw['key'] = base64.b64encode(''.join(chr(random.getrandbits(8)) for _ in range(21)))
+      yield aspects.proceed
 
    def Login(self, user, pwd):
       def fetch():
@@ -141,7 +162,7 @@ class Session(models.LoginSession):
             raise EaError.AccountNotFound
 
          ## HACK? delete any stale sessions before saving
-         for e in Session.objects.filter(user=self.user):
+         for e in LoginSession.objects.filter(user=self.user):
             e.delete()
          self.save()
 
@@ -159,7 +180,7 @@ class Session(models.LoginSession):
 
 class Theater(models.Theater):
    __metaclass__ = djProxy
-   sessionClass = Session
+   sessionClass = LoginSession
 
    @classmethod
    def getTheater(cls, name):
@@ -177,12 +198,13 @@ class Theater(models.Theater):
       Player.objects.create(user_id=session.user_id, game_id=game_id)
 
    def CreateSession(self, ip, port):
-      # prune old sessions in case they got left behind
-      # TODO: prune these more regularly and also when we get an exception+disconnect in a connection
+
+      ## HACK FIXME XXX TODO!!!!!!!!!!: prune these more regularly and also when we get an exception+disconnect in a connection
+
+      ## prune old sessions in case they got left behind
       existing = self.sessionClass.objects.filter(extIp=ip, extPort=port) # unlikely to be same port...
-      if existing:
-         for e in existing:
-            e.delete()
+      for e in existing:
+         e.delete()
       return self.sessionClass.objects.create(theater=self, intIp=ip, intPort=port, extIp=ip, extPort=port)
 
    def DeleteSession(self, ip, port):

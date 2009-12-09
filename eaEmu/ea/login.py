@@ -100,14 +100,7 @@ D10MY+OsEQ14IDG7+CKm8sUApxrU
    def getFactory(self, name):
       return StringLoadingOpenSSLContextFactory(*self._certs[name])
 
-class EaSession(Session): # TODO separate this 'connection' from db object 'session'
-   # TODO turn into handler
-   def _todo_HandleGoodbye(self, msg):
-      # dict:TXN=Goodbye,message="ErrType%3d0 ErrCode%3d0",reason=GOODBYE_CLIENT_NORMAL
-      pass
-      # no reply needed, just stop ping service
-      #self.pingSvc.stopService()
-      #self.memChkSvc.stopService()
+## TODO: handle goodbye
 
 def toEAMapping(map):
    d = dict(('{%s}'%k, v) for k, v in map.iteritems())
