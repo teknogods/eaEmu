@@ -7,7 +7,7 @@ from twisted.internet import threads
 
 from ..gamespy.cipher import *
 from ..util.password import *
-from ..util import aspects2 as aspects
+from ..util import aspects
 
 ## TODO: migrate errors to db?
 class EaError(Exception):

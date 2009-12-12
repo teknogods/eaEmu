@@ -1,5 +1,5 @@
+from __future__ import absolute_import
 from types import FunctionType
-
 from aspects import *
 
 class Aspect(object):

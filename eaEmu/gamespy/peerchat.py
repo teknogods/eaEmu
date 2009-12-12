@@ -18,7 +18,7 @@ from twisted.python import failure
 from . import db
 from .cipher import *
 from .. import util
-from ..util import aspects2 as aspects
+from ..util import aspects
 from ..util.timer import KeepaliveService
 
 ## TODO: all db access should go into DbGroup and DbUser

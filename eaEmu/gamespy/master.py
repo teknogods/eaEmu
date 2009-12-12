@@ -10,7 +10,7 @@ from twisted.protocols.portforward import *
 
 from . import db
 from .. import util
-from ..util import aspects2 as aspects
+from ..util import aspects
 from ..util.enum import Enum
 from .cipher import CipherFactory
 
