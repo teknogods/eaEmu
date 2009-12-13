@@ -27,14 +27,13 @@ class ResponseType(Enum):
    IP_UPDATE          = 0x04
 
 class ResultType(Enum):
-   FULL = ord('~') ##traced ip,port, reported ip,port, private ip,port
-   PARTIAL = ord('w') ## traced ip,port, reported ip,port
-   MINIMAL = ord('U') ## reported public ip,port follows
-   HUNNHH = ord('\\') ## i have no clue... 10 bytes follow it (search Twinblade)
+   ##                      x T P p c d
+   FULL = ord('~')    ## 0b1 1 1 1 1 10 ## 18 traced ip,port, reported ip,port, private ip,port
+   PARTIAL = ord('w') ## 0b1 1 1 0 1 11 ## 12 traced ip,port, reported ip,port
+   HUNNHH = ord('\\') ## 0b1 0 1 1 1 00 ## 10 some ip, port, ip (search Twinblade) ips look like public/traced
+   MINIMAL = ord('U') ## 0b1 0 1 0 1 01 ##  6 reported public ip,port follows
+   ## (there could be more)
    ## this is prly a bitfield not an enum...
-
-#class HeartbeatMasterProxy(DatagramProtocol):
-   #def datagramReceived(self, data, (host, port)):
 
 class HeartbeatMaster(DatagramProtocol):
    '''

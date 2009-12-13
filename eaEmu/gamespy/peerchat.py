@@ -512,7 +512,9 @@ class DbGroup(db.Channel):
          if self.users.filter(id=client.avatar.id).count(): ## if in channel
             self.users.remove(client.avatar)
             ## delete stats object
-            self.stats_set.delete(persona__user=client.avatar)
+            ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
+            ## clients and they do a GETCKEY on that user.
+            self.stats_set.get(persona__user=client.avatar).delete()
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id):
