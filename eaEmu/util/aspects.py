@@ -24,7 +24,7 @@ class Aspect(object):
             attr = klass.__dict__[key]
             if callable(attr):
                   with_wrap(attr, getattr(self.targetClass, key))
-                  print 'wrapped', key
+                  #print 'wrapped', key
       ## no need to return anything, the decorated class shouldn't exist
       ## -- the act of decorating it wraps its targetClass
       ## TODO: do return the class that has a method to unwrap everything again

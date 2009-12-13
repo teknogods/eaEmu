@@ -147,8 +147,8 @@ class Peerchat(IRCUser, object):
 
       self.pingService.startService()
 
-      ## db initializations go here
-      ## TODO: move get_or_create Stats here
+      ## db initializations go here (TODO: move them)
+
       ## create user mode object
       info = db.UserIrcInfo.objects.get_or_create(user=self.avatar, channel=None)
 
@@ -291,24 +291,26 @@ class Peerchat(IRCUser, object):
 
       grp = unicode(chan[1:])
 
-      def saveToDb():
-         if 'b_arenaTeamID' in changes:
-            changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
-         stats = db.Stats.objects.get_or_create(persona=self.avatar.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0]
-         for k, v in changes.iteritems(): setattr(stats, k, v)
-         stats.save()
-         return stats
-
-
       def ebGroup(err):
          err.trap(ewords.NoSuchGroup)
+         print('Group not found')
          pass ## TODO
 
-      def respond(results):
-         successes = [x[0] for x in results]
+      def cbUpdateAndSave(stats):
+         if 'b_arenaTeamID' in changes:
+            changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
+         for k, v in changes.iteritems(): setattr(stats, k, v)
+         def save():
+            stats.save()
+            return stats
+         return threads.deferToThread(save)
+
+      def ebRespond(err):
+         print('Error in sending response: probably either stats or group could not be retrieved')
+         return err
+
+      def cbRespond(results):
          stats, group = [x[1] for x in results]
-         if not all(successes):
-            return ## TODO: log this / raise exc
          response = stats.dumpFields(fields, withNames=True)
 
          ## BCAST - broadcast the change
@@ -325,9 +327,10 @@ class Peerchat(IRCUser, object):
          ## also send BCAST to self (group send normally excludes self)
          self.receive(self, group, msg)
 
-      defer.DeferredList([threads.deferToThread(saveToDb),
-                          self.realm.lookupGroup(grp).addErrback(ebGroup)]).addCallback(respond)
-
+      defer.DeferredList([
+         db.Stats.getStats(self.name, grp).addCallback(cbUpdateAndSave),
+         self.realm.lookupGroup(grp).addErrback(ebGroup),
+      ]).addCallback(cbRespond).addErrback(ebRespond)
 
    def _sendTopic(self, group):
       '''
@@ -429,15 +432,13 @@ class PeerchatFactory(IRCFactory):
       realm = PeerchatRealm()
       IRCFactory.__init__(self, realm, PeerchatPortal(realm))
 
-
-
 ## INTEGRAGTION TODO:
 ## follow naming, callback convention, db abstraction
 ## move all db stuff to DbGroup and DbUser
-## delete old_ peerchat
 ## TODO:
 ## * all db access should use deferToThread
 ## * figure out deferred chain in addGroup
+## * this class should be an Aspect of db.Group
 
 ## TODO: check that interfac is fully implemented
 class DbGroup(db.Channel):
@@ -472,52 +473,61 @@ class DbGroup(db.Channel):
 
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
-      if not self.users.filter(id=client.avatar.id).count(): ## if not in channel
-         ## set mode for user in this channel
-         info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
+      def dbOps():
+         if not self.users.filter(id=client.avatar.id).count(): ## if not in channel
+            ## set mode for user in this channel
+            info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
 
-         if self.users.count() == 0 and self.name.lower().startswith('gsp'):
-            client.avatar.setChanMode(self, '+o')
-            ## first in private chan, promote to op
-         self.users.add(client.avatar) ## TODO: deferred
-         ## notify other clients in this group
-         calls = []
-         for usr in self.users.exclude(id=client.avatar.id): ## better way to write this?
-            usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
-            if usr.mind is None:
-               ## HACK: this prunes clients that exited badly
-               self.users.remove(usr)
-            dfr = defer.maybeDeferred(usr.mind.userJoined, self, client)
-            dfr.addErrback(self._ebUserCall, client=usr.mind)
-            calls.append(dfr)
-         ## callbacks for Deferreds in a DeferredList are fired only once all have completed
-         return defer.DeferredList(calls).addCallback(self._cbUserCall)
-      else:
-         return failure.Failure(Exception('User already in channel.'))
+            if self.users.count() == 0 and self.name.lower().startswith('gsp'):
+               client.avatar.setChanMode(self, '+o')
+               ## first in private chan, promote to op
+            self.users.add(client.avatar)
+            ## create stats object (get_or_create to be safe)
+            self.stats_set.get_or_create(persona=client.avatar.getPersona())
+            ## notify other clients in this group
+            calls = []
+            for usr in self.users.exclude(id=client.avatar.id): ## TODO: better way to write this?
+               usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
+               if usr.mind is None:
+                  ## HACK: this prunes clients that exited badly
+                  self.users.remove(usr)
+               dfr = defer.maybeDeferred(usr.mind.userJoined, self, client)
+               dfr.addErrback(self._ebUserCall, client=usr.mind)
+               calls.append(dfr)
+            ## cant return this from deferToThread, so there may be a race conditin if any callbacks are added to it
+            defer.DeferredList(calls).addCallback(self._cbUserCall)
+         else:
+            raise Exception('User already in channel.')
+      return threads.deferToThread(dbOps)
 
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
-      def cbUsersRemoved(results):
-         if self.name.lower().startswith('gsp') and self.users.count() == 0:
-            self.delete()
-         return results
+      def dbOps():
+         def cbUsersRemoved(results):
+            if self.name.lower().startswith('gsp') and self.users.count() == 0:
+               self.delete()
+            return results
 
-      if self.users.filter(id=client.avatar.id).count(): ## if in channel
-         self.users.remove(client.avatar)
-         ## notify other clients in this group
-         calls = []
-         for usr in self.users.exclude(id=client.avatar.id):
-            usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
-            if usr.mind is None:
-               ## HACK: this prunes clients that exited badly
-               self.users.remove(usr)
-            dfr = defer.maybeDeferred(usr.mind.userLeft, self, client, reason)
-            dfr.addErrback(self._ebUserCall, client=usr.mind)
-            calls.append(dfr)
-         return defer.DeferredList(calls).addCallback(cbUsersRemoved)
-      else:
-         raise Exception('User not in channel.')
+         if self.users.filter(id=client.avatar.id).count(): ## if in channel
+            self.users.remove(client.avatar)
+            ## delete stats object
+            self.stats_set.delete(persona__user=client.avatar)
+            ## notify other clients in this group
+            calls = []
+            for usr in self.users.exclude(id=client.avatar.id):
+               usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
+               if usr.mind is None:
+                  ## HACK: this prunes clients that exited badly
+                  self.users.remove(usr)
+               dfr = defer.maybeDeferred(usr.mind.userLeft, self, client, reason)
+               dfr.addErrback(self._ebUserCall, client=usr.mind)
+               calls.append(dfr)
+            ## cant return this from deferToThread, so there may be a race conditin if any callbacks are added to it
+            defer.DeferredList(calls).addCallback(cbUsersRemoved)
+         else:
+            raise Exception('User not in channel.')
+      return threads.deferToThread(dbOps)
 
    def iterusers(self):
       ## TODO: deferToThread
