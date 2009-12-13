@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from types import FunctionType
 from aspects import *
 
 class Aspect(object):
@@ -23,9 +22,10 @@ class Aspect(object):
             ## when invoked.
             #attr = getattr(klass, key)
             attr = klass.__dict__[key]
-            if type(attr) is FunctionType:
+            if callable(attr):
                   with_wrap(attr, getattr(self.targetClass, key))
-                  #print 'wrapped', key
+                  print 'wrapped', key
       ## no need to return anything, the decorated class shouldn't exist
       ## -- the act of decorating it wraps its targetClass
+      ## TODO: do return the class that has a method to unwrap everything again
 

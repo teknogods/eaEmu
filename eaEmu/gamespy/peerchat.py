@@ -21,29 +21,35 @@ from .. import util
 from ..util import aspects
 from ..util.timer import KeepaliveService
 
+## FIXME: this is in here because it's coupled with DbUser
+from ..util import aspects
+@aspects.Aspect(db.Stats)
+class _StatsWrap:
+   def dumpFields(self, fields, withNames=False):
+      #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
+      fieldVals = {}
+      for fld in fields:
+         if fld == 'username':
+            ## this is pretty HACKy, but needed cuz i dont want to do a db query for the DbUser version
+            ## of this object
+            fieldVals[fld] = DbUser.__dict__['getIrcUserString'](self.persona.user)
+         elif fld == 'b_arenaTeamID':
+            val = getattr(self, fld)
+            fieldVals[fld] = val and val.id or 0 # use zero if field is null (very rare case)
+         else:
+            fieldVals[fld] =getattr(self, fld, None) or '' ## None's become ''
+
+      return ':\\' + '\\'.join(sum(
+                                   [[k, str(fieldVals[k])] for k in fields] if withNames else
+                                   [[str(fieldVals[k])] for k in fields],
+                                   []
+      ))
+
+
+
 ## TODO: all db access should go into DbGroup and DbUser
 ## They should also all use Deferreds
 
-@util.AttachMethod(db.Stats)
-def dumpFields(self, fields, withNames=False):
-   #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
-   fieldVals = {}
-   for fld in fields:
-      if fld == 'username':
-         ## this is pretty HACKy, but needed cuz i dont want to do a db query for the DbUser version
-         ## of this object
-         fieldVals[fld] = DbUser.__dict__['getIrcUserString'](self.persona.user)
-      elif fld == 'b_arenaTeamID':
-         val = getattr(self, fld)
-         fieldVals[fld] = val and val.id or 0 # use zero if field is null (very rare case)
-      else:
-         fieldVals[fld] =getattr(self, fld, None) or '' ## None's become ''
-
-   return ':\\' + '\\'.join(sum(
-                                [[k, str(fieldVals[k])] for k in fields] if withNames else
-                                [[str(fieldVals[k])] for k in fields],
-                                []
-   ))
 
 class Peerchat(IRCUser, object):
    def connectionMade(self):

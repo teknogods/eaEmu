@@ -18,7 +18,7 @@ class Mercs2Session(EaSession):
       super(Mercs2Session, self).__init__(*args, **kw)
       self.theater = Mercs2Theater.objects.get(id=self.theater.id) #HACK so self.theater.method() works
 
-   # Here's how a session is hosted and joined. (I think) Message 
+   # Here's how a session is hosted and joined. (I think) Message
    # sequence is left-to-right, top-to-bottom in this table.
    #  Host       Theater    Guest
    #  CGAM      CGAM                # host creates game
@@ -28,12 +28,12 @@ class Mercs2Session(EaSession):
    #            EGEG                # host is allowed to enter
    #  PENT      PENT                # Player ENTered
    #                        EGAM    # guest wants to join
-   #                EGAM                
+   #                EGAM
    #            EGRQ                # unconfirmed !
    #  EGRS      EGRS                # unconfirmed !
    #                EGEG            # ok come on in! (what's "denied"?) maybe guest always gets EGEG then just ECNL if not allowed?
    #                        PENT?
-   #               
+   #
    def CreateGame(self, opts): # TODO: change arg to **opts or obj with keys in it
       # is this already available to us in the db?
       self.__dict__.update(
@@ -43,8 +43,8 @@ class Mercs2Session(EaSession):
          int_port = msg.map['INT-PORT'],
       )
       self.save()
-      
-      game = Game.objects.create(
+
+      game = GameSession.objects.create(
          list = GameList.objects.get(id=257),
          host = self.user,
          ekey = 'T1LZMJuD6PVPPjQsjv4r6Q==',
@@ -74,7 +74,7 @@ class Mercs2Session(EaSession):
          # these vals are provided by client, so response is easy
          game = self.theater.GetGame(game_id=int(msg.map['GID']))
       else: # game id needs to be looked up
-         # dict:PORT=10000,PTYPE=P,R-INT-IP=192.168.0.81,R-INT-PORT=10000,R-U-USERID=914483734,R-USER=simonmc86,TID=6,TYPE=G,USER=simonmc86 
+         # dict:PORT=10000,PTYPE=P,R-INT-IP=192.168.0.81,R-INT-PORT=10000,R-U-USERID=914483734,R-USER=simonmc86,TID=6,TYPE=G,USER=simonmc86
          # (notice my ip and uid above, but somebody else's username...)
          # the client seems to just join games based on player name and lets the server look up the info.
          game = self.theater.GetGame(host=msg.map['USER'])
@@ -124,7 +124,7 @@ class Mercs2Session(EaSession):
          'EKEY':game.ekey, # some kinda session key?
          'TICKET': rq.id,
       })
-    
+
 
 class Mercs2Theater(Theater):
    sessionClass = Mercs2Session
@@ -142,7 +142,7 @@ class Mercs2LoginServer(EaServer):
       replies = EaServer.handleRequest(self, msg)
       if replies != None:
          return replies
-      
+
       reply = self.messageClass()
       reply.id = msg.id
       # This seems to always hold true. The last byte(s?) is the message sequence id.
@@ -224,7 +224,7 @@ class Mercs2Msg_Status(EaMessage):
             'resultType':'LIST',
          })
       })
-      
+
 
 class Mercs2MsgHlr_Start(MessageHandler):
    def makeReply(self, msg):
@@ -234,7 +234,7 @@ class Mercs2MsgHlr_Start(MessageHandler):
          'id.id':id, # ID for query, sent back in this & Status msg
          'id.partition':msg.map['partition.partition'],
       })
-   
+
    def handle(self, msg):
       MessageHandler.Reply(self)
 
@@ -250,7 +250,7 @@ class Mercs2MsgHlr_Hello(EaMsgHlr_Hello):
          'domainPartition.subDomain':'MERCS2',
       })
       return reply
-      
+
 class Mercs2MsgHlr_Login(MessageHandler):
    def makeReply(self, msg):
       return msg.makeReply({
@@ -297,9 +297,9 @@ class Mercs2MsgHlr_EGAM(MessageHandler):
    def handle(self, msg):
       self.info = self.server.session.EnterGame(msg)
       self.Reply()
-      
+
       Mercs2Cmd_EGAM(self.server).send()
-      
+
       # send the request msg to the host
       rDict = {
          'PTYPE':'P',
@@ -314,16 +314,16 @@ class Mercs2MsgHlr_EGAM(MessageHandler):
          'R-INT-PORT':rq.session.int_port,
          'TICKET':rq.id, # i take ticket to mean request-id
       }
-      # NOTE that the "R-" keys dont seem to be consistent 
+      # NOTE that the "R-" keys dont seem to be consistent
       # -- some are the requester's others are the host's...
-      if game.host != rq.session.user: 
+      if game.host != rq.session.user:
          rDict.update({
             'R-USER':game.host.login,
             'R-U-USERID':rq.user.id, # dont make much sense :(
          })
       Mercs2Theater.connections[game.session_id].SendEnterGameRequest(rDict) #HACK
 
-      
+
 class Mercs2MsgHlr_GetRankedStats:
    def makeReply(self, msg):
       return msg.makeReply({
@@ -391,7 +391,7 @@ class Mercs2TheaterServer(EaServer): #kinda a HACKy misnomer but quick way to in
       elif msg.id == 'GDAT': # Game DATa - queries can specify a GameID or USERname of friend
          # dict:TYPE=G,USER=elitak
          # ... or dict:GID=768,LID=257
-         
+
          # return "none found" by returning nothing but TID:
          #reply.flags = 'ntfn' # this is interesting. 'not found' perhaps? leads me to believe that these 4 bytes arent strictly reserved for bitfields
 
@@ -497,11 +497,11 @@ class Mercs2TheaterServer(EaServer): #kinda a HACKy misnomer but quick way to in
 class Mercs2LoginFactory(ServerFactory):
    protocol = Mercs2LoginServer
    log = util.getLogger('fesl.mercs2', self)
-   
+
 class Mercs2TheaterFactory(ServerFactory):
    protocol = Mercs2TheaterServer
    log = util.getLogger('theater.mercs2', self)
-   
+
 class Mercs2Service(MultiService):
    def __init__(self, addresses=None):
       MultiService.__init__(self)
@@ -512,4 +512,4 @@ class Mercs2Service(MultiService):
       sFact = Mercs2TheaterFactory()
       #sFact = makeTCPFwdFactory('theater.fwdCli', 'theater.fwdSer', fwdDRC, fwdDRS)(*address)
       self.addService(TCPServer(addresses[0][1]+1, sFact))
-      
+

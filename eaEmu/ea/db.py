@@ -24,13 +24,10 @@ EaError.NameTaken = EaError(160, 'That account name is already taken')
 try:
    from ..dj import settings
    import django.conf
+   import django.db.models
    if not django.conf.settings.configured:
       django.conf.settings.configure(**settings.__dict__)
-
-   import django.db.models
-
-   from ..dj.eaEmu import models
-   from ..dj.eaEmu.models import GameList, Player, EnterGameRequest, Persona, LoginSession
+   from ..dj.eaEmu.models import *
 except Exception, e:
    print 'Exception while importing django modules:', e
    # generate dummy classes here so we can at least load up
@@ -56,35 +53,16 @@ except Exception, e:
 #   id = ''
 #   name = ''
 
-class djAppend(django.db.models.base.ModelBase):
-   def __new__(cls, name, bases, attrs):
-      baseModel = bases[0]
-      for attr in attrs:
-         setattr(baseModel, attr.__name__, attr)
-      new_class =  django.db.models.base.ModelBase.__new__(cls, name, bases, attrs)
-
-
-class djProxy(django.db.models.base.ModelBase):
-   def __new__(cls, name, bases, attrs):
-      class _Meta:
-         proxy = True
-         app_label = 'djProxy'
-      cls.Meta = _Meta
-      new_class =  django.db.models.base.ModelBase.__new__(cls, name, bases, attrs)
-      return new_class
-
-class Game(models.GameSession):
-   __metaclass__ = djProxy
-
+@aspects.Aspect(GameSession)
+class _GameWrap:
    def Join(self, session): # TODO?
       # get hosting user's info and broker the connection
       pass
    def Leave(self, session):
       pass
 
-class User(models.User):
-   __metaclass__ = djProxy
-
+@aspects.Aspect(User)
+class _UserWrap:
    #TODO: obsolete, remove?
    @classmethod
    def GetUser(cls, **kw):
@@ -112,39 +90,33 @@ class User(models.User):
       #return [str(x.name) for x in Persona.objects.filter(user=self)]
       return [str(x.name) for x in self.persona_set.all()]
 
-# TODO: make into a getter method for property in User
-def getPersona(self):
-   'returns the active persona'
-   # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
-   return self.persona_set.get(selected=True)
-models.User.getPersona = getPersona
+   # TODO: make into a getter method for property in User
+   def getPersona(self):
+      'returns the active persona'
+      # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
+      return self.persona_set.get(selected=True)
 
-def getUser(cls, **kw):
-   '''
-   Retrieves the User object that this Persona belongs to.
-   '''
-   return cls.objects.get(**kw).user
-models.Persona.getUser = classmethod(getUser)
+@aspects.Aspect(Persona)
+class _PersonaWrap:
+   @classmethod
+   def getUser(cls, **kw):
+      '''
+      Retrieves the User object that this Persona belongs to.
+      '''
+      return cls.objects.get(**kw).user
 
-def getStats(cls, name, chanName):
-   def fetch():
-      persona = db.Persona.objects.get(name__iexact=name)
-      channel = db.Channel.objects.get(name__iexact=chanName)
-      return cls.objects.get_or_create(persona=persona, channel=channel)[0]
-   return threads.deferToThread(fetch)
-models.Stats.getStats = classmethod(getStats)
 
-class ModelExtend(object):
-   def __init__(self, model):
-      self.model = model
+@aspects.Aspect(Stats)
+class _StatsWrap:
+   @classmethod
+   def getStats(cls, name, chanName):
+      def fetch():
+         persona = db.Persona.objects.get(name__iexact=name)
+         channel = db.Channel.objects.get(name__iexact=chanName)
+         return cls.objects.get_or_create(persona=persona, channel=channel)[0]
+      return threads.deferToThread(fetch)
 
-   def __call__(self, klass):
-      import inspect
-      for k, v in inspect.getmembers(klass):
-         setattr(self.model, k, v)
-      return self.model
-
-@aspects.Aspect(models.LoginSession)
+@aspects.Aspect(LoginSession)
 class _LoginSession:
    def __init__(self, *args, **kw):
       ## TODO: decrypt,generate this
@@ -178,8 +150,8 @@ class _LoginSession:
             raise EaError.BadPassword
       return threads.deferToThread(fetch)
 
-class Theater(models.Theater):
-   __metaclass__ = djProxy
+@aspects.Aspect(Theater)
+class _TheaterWrap:
    sessionClass = LoginSession
 
    @classmethod
@@ -227,6 +199,6 @@ class Theater(models.Theater):
 
    def GetGame(self, game_id=None, host=None):
       if game_id != None:
-         return Game.objects.get(id=game_id)
+         return GameSession.objects.get(id=game_id)
       elif host != None:
          return User.objects.get(login=host).player_set[0]
