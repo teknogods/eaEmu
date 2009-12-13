@@ -8,18 +8,7 @@ from twisted.internet import threads
 from ..gamespy.cipher import *
 from ..util.password import *
 from ..util import aspects
-
-## TODO: migrate errors to db?
-class EaError(Exception):
-   def __init__(self, id, text=''):
-      self.id = id
-      self.text = text
-
-## note that these strings are never displayed, so i left the ones i'm not sure about blank
-EaError.BadPassword = EaError(122, 'The password the user specified is incorrect')
-EaError.AccountNotFound = EaError(101, 'The user was not found')
-EaError.AccountDisabled = EaError(102)
-EaError.NameTaken = EaError(160, 'That account name is already taken')
+from .errors import *
 
 try:
    from ..dj import settings
@@ -127,7 +116,7 @@ class _LoginSession:
       yield aspects.proceed
 
    def Login(self, user, pwd):
-      def fetch():
+      def getUser():
          try:
             self.user = User.objects.get(login=user)
          except User.DoesNotExist:
@@ -138,17 +127,24 @@ class _LoginSession:
             e.delete()
          self.save()
 
-         if not self.user.active:
-            ## FIXME: is there a special EaError for this?
+         return self.user
+
+      def cbGotUser(user):
+         if not user.active:
             raise EaError.AccountDisabled
          ## FIXME: stick with 1 auth type?
-         elif any(checker(self.user.password).check(pwd) for checker in [PhpPassword, PlainTextPassword]):
-            self.user.lastLogin = datetime.now()
-            self.user.save()
-            return self.user
+         #elif any(checker(user).check(pwd) for checker in [RemotePhpPassword, PhpPassword, PlainTextPassword]):
          else:
-            raise EaError.BadPassword
-      return threads.deferToThread(fetch)
+            def cbUserAuth(isMatch):
+               if isMatch:
+                  user.lastLogin = datetime.now()
+                  user.save()
+                  return user
+               else:
+                  raise EaError.BadPassword
+            return RemotePhpPassword(user).check(pwd).addCallback(cbUserAuth)
+
+      return threads.deferToThread(getUser).addCallback(cbGotUser)
 
 @aspects.Aspect(Theater)
 class _TheaterWrap:

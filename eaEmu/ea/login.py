@@ -214,7 +214,6 @@ class EaServer(Protocol):
       self.session = self.theater.DeleteSession(ep.host, ep.port)
       Protocol.connectionLost(self, *args)
 
-
    def dataReceived(self, data):
       for msg in self.msgFactory.getMessages(data):
          self.log.debug('got  {0}'.format(msg))

@@ -16,6 +16,7 @@ svc.setServiceParent(application)
 if __name__ == '__main__':
    ## this wrapper checks my modules as well as the system ones
    def wrapGetPlugins(interface, package=None):
+      ## FIXME: this spams dropin.cache files everywhere in eaEmu/
       yield aspects.proceed(interface, eaEmu)
       yield aspects.proceed
    aspects.with_wrap(wrapGetPlugins, twisted.plugin.getPlugins)
