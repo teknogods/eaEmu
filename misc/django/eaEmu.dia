@@ -677,7 +677,7 @@
             <dia:string>#boolean#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#default=True#</dia:string>
+            <dia:string>#default=False#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>

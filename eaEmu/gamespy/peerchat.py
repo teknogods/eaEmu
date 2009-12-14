@@ -75,8 +75,14 @@ class Peerchat(IRCUser, object):
 
    def connectionLost(self, reason):
       self.pingService.stopService()
-      self.avatar.leaveAll()
-      IRCUser.connectionLost(self, reason)
+      ## had to reimplement IRCUser.connectionLost to handled deferred logout
+      if self.logout is not None:
+         def cbLoggedOut(result):
+            self.avatar = None
+            return result
+         defer.maybeDeferred(self.logout).addCallback(cbLoggedOut)
+
+
 
    def dataReceived(self, data):
       self.pingService.alive()
@@ -474,7 +480,8 @@ class DbGroup(db.Channel):
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
       def dbOps():
-         if not self.users.filter(id=client.avatar.id).count(): ## if not in channel
+         #if not self.users.filter(id=client.avatar.id).count(): ## if not in channel
+         if True:
             ## set mode for user in this channel
             info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
 
@@ -497,7 +504,7 @@ class DbGroup(db.Channel):
             ## cant return this from deferToThread, so there may be a race conditin if any callbacks are added to it
             defer.DeferredList(calls).addCallback(self._cbUserCall)
          else:
-            raise Exception('User already in channel.')
+            raise Exception('User already in channel.') ##FIXME: this is bad!!!!!! user will lock up
       return threads.deferToThread(dbOps)
 
    def remove(self, client, reason=None):
@@ -514,7 +521,10 @@ class DbGroup(db.Channel):
             ## delete stats object
             ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
             ## clients and they do a GETCKEY on that user.
-            self.stats_set.get(persona__user=client.avatar).delete()
+            try:
+               self.stats_set.get(persona__user=client.avatar).delete()
+            except Stats.DoesNotExist:
+               pass
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id):
@@ -528,7 +538,8 @@ class DbGroup(db.Channel):
             ## cant return this from deferToThread, so there may be a race conditin if any callbacks are added to it
             defer.DeferredList(calls).addCallback(cbUsersRemoved)
          else:
-            raise Exception('User not in channel.')
+            #raise Exception('User not in channel.')
+            pass ## who cares
       return threads.deferToThread(dbOps)
 
    def iterusers(self):
@@ -599,6 +610,10 @@ class DbUser(db.User):
          departures.append(self.leave(group, reason))
       return defer.DeferredList(departures)
 
+   ## this is called from IRCUser.connectionLost (after a bunch of redirection)
+   def logout(self):
+      return self.leaveAll()
+
    def send(self, recipient, message):
       from time import time
       self.lastMessage = time()
@@ -638,6 +653,18 @@ class PeerchatRealm(WordsRealm):
          if chan.name.startswith('GSP'):
             chan.delete()
 
+
+   ## for some reason WordsRealm does this syncronously, which leads to
+   ## race conditions in my code
+   def logoutFactory(self, avatar, facet):
+      def logout():
+         # XXX Deferred support here
+         def cbLoggedOut(result):
+            avatar.realm = avatar.mind = None
+            return result
+         return defer.maybeDeferred(getattr(facet, 'logout', lambda: None)).addCallback(cbLoggedOut)
+      return logout
+
    def itergroups(self):
       return iter(DbGroup.objects)
 
@@ -667,6 +694,7 @@ class PeerchatRealm(WordsRealm):
 
    def getGroup(self, name):
       def ebGroup(err):
+         ## supermethod only handles ewords.DuplicateGroup exceptions
          ## this will trap if user tried to make chan not starting with 'GSP'
          err.trap(Exception) ##TODO: make nopermstocreate exc
          return self.lookupGroup(name)
@@ -701,6 +729,7 @@ class PeerchatRealm(WordsRealm):
          return grp
 
       return threads.deferToThread(dbCall)
+
 
 class PeerchatPortal(Portal):
    def __init__(self, realm):

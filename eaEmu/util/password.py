@@ -52,7 +52,7 @@ class PasswordChecker(object):
       return False
 
 class PlainTextPassword(PasswordChecker):
-   def check(self, user):
+   def check(self, input):
       return self.user.password == input
 
 class PhpPassword(PasswordChecker):
@@ -119,7 +119,7 @@ class RemotePhpPassword(PhpPassword):
          raise EaError.BackendFail
 
       def cbGotPwd(result):
-         self.password = result[0][0]
+         self.password = result[0][0]  ## FIXME: possible index errors
          return super(RemotePhpPassword, self).check(input)
 
       #dfr.setTimeout(5) ## FIXME: this doesnt work as expected

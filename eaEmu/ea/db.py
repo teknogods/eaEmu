@@ -2,7 +2,7 @@ import random
 import base64
 from datetime import datetime
 
-#from twisted.internet import defer
+from twisted.internet import defer
 from twisted.internet import threads
 
 from ..gamespy.cipher import *
@@ -105,6 +105,42 @@ class _StatsWrap:
          return cls.objects.get_or_create(persona=persona, channel=channel)[0]
       return threads.deferToThread(fetch)
 
+def syncAccount(username):
+   ## TODO: maybe grab this info from same database as the one in eaEmu.dj.settings?
+   _info = {
+      'dbapiName' : 'MySQLdb',
+      'host'      : 'teknogods.com',
+      'user'      : 'teknogod',
+      'passwd'    : 'hm9tzuh9',
+      'db'        : 'teknogodscom',
+   }
+   #_info = {'dbapiName':'sqlite3', 'database':'eaEmu.db')
+   def openDbConn():
+      return ConnectionPool(**_info) ## doesnt actually connect until query is run?
+
+   def cbConnOpen(db):
+      return db.runQuery('SELECT user_password, user_email FROM phpbb_users WHERE username = "{0}"'.format(username))
+
+   def ebRunQuery(err):
+      print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
+      ## consume the error and return False for match
+      #return False ## TODO: maybe raise an exception that leads to an EaError message being printed
+      raise EaError.BackendFail
+
+   def cbRunQuery(result):
+      synced = False
+      if len(result) > 0:
+         password, email = result[0]
+         user, synced = User.objects.get_or_create(login=username)
+         synced = synced or user.password != password
+         user.password = password
+         user.email = email
+         user.save()
+      return synced
+
+   #dfr.setTimeout(5) ## FIXME: this doesnt work as expected
+   return deferToThread(openDbConn).addCallbacks(cbConnOpen).addCallbacks(cbRunQuery, ebRunQuery)
+
 @aspects.Aspect(LoginSession)
 class _LoginSession:
    def __init__(self, *args, **kw):
@@ -115,36 +151,53 @@ class _LoginSession:
       kw['key'] = base64.b64encode(''.join(chr(random.getrandbits(8)) for _ in range(21)))
       yield aspects.proceed
 
-   def Login(self, user, pwd):
-      def getUser():
-         try:
-            self.user = User.objects.get(login=user)
-         except User.DoesNotExist:
-            raise EaError.AccountNotFound
+   def Login(self, username, pwd):
+      def cbSync(needed):
+         self.user = User.objects.get(login=username)
+         return self.user
 
+      def ebSync(err):
+         print('Couldn\'t sync account for {0}; falling back to what\'s in the db.'.format(username))
+         ## now jump back to callback chain!
+         return User.objects.get(login=username)
+
+      def ebGetUser(err):
+         err.trap(User.DoesNotExist)
+         raise EaError.AccountNotFound
+
+      def cbGotUser(user):
+         ## these must be nested so that 'user' is in their scope
+         def cbUserAuth(isMatch):
+            if isMatch:
+               user.lastLogin = datetime.now()
+               user.save()
+               return user
+            else:
+               raise EaError.BadPassword
+
+         ## HACKY alternate auth: current plaintext password.
+         ## this is for when the sync fails but we still want to allow
+         ## that specially named account in.
+         def ebAltAuth(err):
+            if not pwd.startswith('$H$') and PlainTextPassword(user).check(pwd):
+               return user
+            else:
+               return err
+
+         if not user.active:
+            raise EaError.AccountDisabled
+         else:
+            return defer.maybeDeferred(PhpPassword(user).check, pwd).addCallbacks(cbUserAuth).addErrback(ebAltAuth)
+
+      def cbSaveSession(user):
+         self.user = user
          ## HACK? delete any stale sessions before saving
          for e in LoginSession.objects.filter(user=self.user):
             e.delete()
          self.save()
-
          return self.user
 
-      def cbGotUser(user):
-         if not user.active:
-            raise EaError.AccountDisabled
-         ## FIXME: stick with 1 auth type?
-         #elif any(checker(user).check(pwd) for checker in [RemotePhpPassword, PhpPassword, PlainTextPassword]):
-         else:
-            def cbUserAuth(isMatch):
-               if isMatch:
-                  user.lastLogin = datetime.now()
-                  user.save()
-                  return user
-               else:
-                  raise EaError.BadPassword
-            return RemotePhpPassword(user).check(pwd).addCallback(cbUserAuth)
-
-      return threads.deferToThread(getUser).addCallback(cbGotUser)
+      return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser).addCallback(cbSaveSession)
 
 @aspects.Aspect(Theater)
 class _TheaterWrap:
