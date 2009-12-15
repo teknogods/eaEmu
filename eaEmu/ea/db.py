@@ -8,7 +8,7 @@ from twisted.internet import threads
 from ..gamespy.cipher import *
 from ..util.password import *
 from ..util import aspects
-from .errors import *
+from . import errors
 
 try:
    from ..dj import settings
@@ -72,7 +72,7 @@ class _UserWrap:
             return Persona.objects.create(user=self, name=name)
          except Exception, ex: ## TODO make this an errback
             ## errbacks are better than try catches in async calls because it allows the caller to chain on extra except-blocks
-            raise EaError.NameTaken ## TODO: find out what this is for mysql (sqlite3.IntegrityError) how to make generic?
+            raise errors.NameTaken() ## TODO: find out what this is for mysql (sqlite3.IntegrityError) how to make generic?
       return threads.deferToThread(add)
 
    def getPersonas(self):
@@ -112,7 +112,7 @@ def syncAccount(username):
       'host'      : 'teknogods.com',
       'user'      : 'teknogod',
       'passwd'    : 'hm9tzuh9',
-      'db'        : 'teknogodscomo',
+      'db'        : 'teknogodscom',
    }
    #_info = {'dbapiName':'sqlite3', 'database':'eaEmu.db')
    def openDbConn():
@@ -123,7 +123,7 @@ def syncAccount(username):
 
    def ebRunQuery(err):
       print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
-      raise EaError.BackendFail
+      raise errors.BackendFail()
 
    def cbRunQuery(result):
       synced = False
@@ -150,6 +150,14 @@ class _LoginSession:
       yield aspects.proceed
 
    def Login(self, username, pwd):
+      '''
+      right now, this does the following:
+      1. sync the account from php db if possible
+      2. if fails, whocares, continue and try whatevers in the db
+      3. check the password as a hash
+      4. if what's in the db is not a hash, check as plaintext as a backup (FIXME, should only check plaintext?)
+      5. show bad password if no matches or show 902 if plaintext check was made
+      '''
       def cbSync(success):
          self.user = User.objects.get(login=username)
          ## HACK? delete any stale sessions before saving
@@ -159,21 +167,23 @@ class _LoginSession:
          return self.user
 
       def ebSync(err):
-         err.trap(EaError)
-         ## FIXME: EaErrors should be subtyped so this extra line isnt necessary:
-         if err.value != EaError.BackendFail: return err
+         err.trap(errors.BackendFail)
+         ## TODO: change this behavior? reraise instead?
          print('Couldn\'t sync account for {0}; falling back to what\'s in the db.'.format(username))
          return defer.succeed(False).addCallback(cbSync) ## dunno if this is proper...
 
       def ebGetUser(err):
          err.trap(User.DoesNotExist)
-         raise EaError.AccountNotFound
+         raise errors.AccountNotFound()
 
       def cbGotUser(user):
          if not user.active:
-            raise EaError.AccountDisabled
+            raise errors.AccountDisabled()
          else:
-            return defer.maybeDeferred(PhpPassword(user).check, pwd).addCallback(cbUserAuth, user).addErrback(ebPlainAuth, user)
+            dfr = defer.maybeDeferred(PhpPassword(user).check, pwd).addCallback(cbUserAuth, user)
+            if not user.password.startswith('$H$'):
+               dfr.addErrback(ebPlainAuth, user)
+            return dfr
 
       def cbUserAuth(isMatch, user):
          if isMatch:
@@ -181,18 +191,17 @@ class _LoginSession:
             user.save()
             return user
          else:
-            raise EaError.BadPassword
+            raise errors.BadPassword()
 
       def ebPlainAuth(err, user):
          ## HACKY alternate auth: current plaintext password.
          ## this allows non-hash passwords to work
          ## (these will only be in db if the sync failed for this account)
-         err.trap(EaError)
-         if err.value != EaError.BadPassword: return err ## FIXME: have own type
-         if not pwd.startswith('$H$') and PlainTextPassword(user).check(pwd):
-            return defer.maybeDeferred(PlainTextPassword(user).check, pwd).addCallback(cbUserAuth)
-         else:
-            raise EaError.BackendAndPasswordFail ## notify that non-forum password was incorrect
+         err.trap(errors.BadPassword)
+         def ebBadPwd(err):
+            err.trap(errors.BadPassword)
+            raise errors.BackendAndPasswordFail() ## notify that non-forum password was incorrect
+         return defer.maybeDeferred(PlainTextPassword(user).check, pwd).addCallback(cbUserAuth, user).addErrback(ebBadPwd)
 
       return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser)
 

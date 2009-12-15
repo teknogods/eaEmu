@@ -22,6 +22,7 @@ from .db import *
 from .. import util
 from ..util.fwdserver import *
 from ..util.timer import KeepaliveService
+from . import errors
 
 class StringLoadingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
    # This is a hacky copy from twisted.internet.ssl.DefaultOpenSSLContextFactory.
@@ -327,7 +328,7 @@ class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identi
          self.Reply()
 
       def ebUser(err):
-         err.trap(EaError)
+         err.trap(errors.EaError)
          self.replyMap = {
             'localizedMessage' : '"{0}"'.format(err.value.text),
             'errorContainer' : [],
@@ -360,7 +361,7 @@ class EaMsgHlr_NuAddPersona(MessageHandler):
          self.Reply()
 
       def ebPersona(err):
-         err.trap(EaError)
+         err.trap(errors.EaError)
          self.replyMap = {
             'localizedMessage' : '"{0}"'.format(err.value.text),
             'errorContainer' : [],

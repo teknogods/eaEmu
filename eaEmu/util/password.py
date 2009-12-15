@@ -90,37 +90,3 @@ class PhpPassword(PasswordChecker):
          tmp_hash = m.digest()
 
       return self.password == self.password[:12] + php64translate(reverse64encode(tmp_hash))
-
-class RemotePhpPassword(PhpPassword):
-   _info = {
-      'dbapiName' : 'MySQLdb',
-      'host'      : 'teknogods.com',
-      'user'      : 'teknogod',
-      'passwd'    : 'hm9tzuh9',
-      'db'        : 'teknogodscom',
-   }
-   #_info = {'dbapiName':'sqlite3', 'database':'eaEmu.db')
-
-   def __init__(self, user):
-      super(RemotePhpPassword, self).__init__(user=user)
-
-   def check(self, input):
-      ## TODO: opening every time a pwd is checked is pretty inefficient...
-      def openDbConn():
-         return ConnectionPool(**self._info) ## doesnt actually connect until query is run?
-
-      def cbConnOpen(db):
-         return db.runQuery('SELECT user_password FROM phpbb_users WHERE username = "{0}"'.format(self.user.login))
-
-      def ebRunQuery(err):
-         print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
-         ## consume the error and return False for match
-         #return False ## TODO: maybe raise an exception that leads to an EaError message being printed
-         raise EaError.BackendFail
-
-      def cbGotPwd(result):
-         self.password = result[0][0]  ## FIXME: possible index errors
-         return super(RemotePhpPassword, self).check(input)
-
-      #dfr.setTimeout(5) ## FIXME: this doesnt work as expected
-      return deferToThread(openDbConn).addCallbacks(cbConnOpen).addCallbacks(cbGotPwd, ebRunQuery)
