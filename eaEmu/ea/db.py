@@ -112,7 +112,7 @@ def syncAccount(username):
       'host'      : 'teknogods.com',
       'user'      : 'teknogod',
       'passwd'    : 'hm9tzuh9',
-      'db'        : 'teknogodscom',
+      'db'        : 'teknogodscomo',
    }
    #_info = {'dbapiName':'sqlite3', 'database':'eaEmu.db')
    def openDbConn():
@@ -123,8 +123,6 @@ def syncAccount(username):
 
    def ebRunQuery(err):
       print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
-      ## consume the error and return False for match
-      #return False ## TODO: maybe raise an exception that leads to an EaError message being printed
       raise EaError.BackendFail
 
    def cbRunQuery(result):
@@ -152,52 +150,51 @@ class _LoginSession:
       yield aspects.proceed
 
    def Login(self, username, pwd):
-      def cbSync(needed):
+      def cbSync(success):
          self.user = User.objects.get(login=username)
-         return self.user
-
-      def ebSync(err):
-         print('Couldn\'t sync account for {0}; falling back to what\'s in the db.'.format(username))
-         ## now jump back to callback chain!
-         return User.objects.get(login=username)
-
-      def ebGetUser(err):
-         err.trap(User.DoesNotExist)
-         raise EaError.AccountNotFound
-
-      def cbGotUser(user):
-         ## these must be nested so that 'user' is in their scope
-         def cbUserAuth(isMatch):
-            if isMatch:
-               user.lastLogin = datetime.now()
-               user.save()
-               return user
-            else:
-               raise EaError.BadPassword
-
-         ## HACKY alternate auth: current plaintext password.
-         ## this is for when the sync fails but we still want to allow
-         ## that specially named account in.
-         def ebAltAuth(err):
-            if not pwd.startswith('$H$') and PlainTextPassword(user).check(pwd):
-               return user
-            else:
-               return err
-
-         if not user.active:
-            raise EaError.AccountDisabled
-         else:
-            return defer.maybeDeferred(PhpPassword(user).check, pwd).addCallbacks(cbUserAuth).addErrback(ebAltAuth)
-
-      def cbSaveSession(user):
-         self.user = user
          ## HACK? delete any stale sessions before saving
          for e in LoginSession.objects.filter(user=self.user):
             e.delete()
          self.save()
          return self.user
 
-      return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser).addCallback(cbSaveSession)
+      def ebSync(err):
+         err.trap(EaError)
+         ## FIXME: EaErrors should be subtyped so this extra line isnt necessary:
+         if err.value != EaError.BackendFail: return err
+         print('Couldn\'t sync account for {0}; falling back to what\'s in the db.'.format(username))
+         return defer.succeed(False).addCallback(cbSync) ## dunno if this is proper...
+
+      def ebGetUser(err):
+         err.trap(User.DoesNotExist)
+         raise EaError.AccountNotFound
+
+      def cbGotUser(user):
+         if not user.active:
+            raise EaError.AccountDisabled
+         else:
+            return defer.maybeDeferred(PhpPassword(user).check, pwd).addCallback(cbUserAuth, user).addErrback(ebPlainAuth, user)
+
+      def cbUserAuth(isMatch, user):
+         if isMatch:
+            user.lastLogin = datetime.now()
+            user.save()
+            return user
+         else:
+            raise EaError.BadPassword
+
+      def ebPlainAuth(err, user):
+         ## HACKY alternate auth: current plaintext password.
+         ## this allows non-hash passwords to work
+         ## (these will only be in db if the sync failed for this account)
+         err.trap(EaError)
+         if err.value != EaError.BadPassword: return err ## FIXME: have own type
+         if not pwd.startswith('$H$') and PlainTextPassword(user).check(pwd):
+            return defer.maybeDeferred(PlainTextPassword(user).check, pwd).addCallback(cbUserAuth)
+         else:
+            raise EaError.BackendAndPasswordFail ## notify that non-forum password was incorrect
+
+      return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser)
 
 @aspects.Aspect(Theater)
 class _TheaterWrap:

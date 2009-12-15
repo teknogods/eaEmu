@@ -10,4 +10,7 @@ EaError.BadPassword = EaError(122, 'The password the user specified is incorrect
 EaError.AccountNotFound = EaError(101, 'The user was not found')
 EaError.AccountDisabled = EaError(102)
 EaError.NameTaken = EaError(160, 'That account name is already taken')
-EaError.BackendFail = EaError(104) ## custom id, normally 'data necessary not found'
+
+## 900 and above don't normally exist in the game and are purely custom msg ids
+EaError.BackendFail = EaError(901, 'The server could not check your password with the authentication db')
+EaError.BackendAndPasswordFail = EaError(902, 'Your non-forum password was incorrect.')
