@@ -1,4 +1,4 @@
-import md5
+import hashlib
 import random
 import time
 import struct
@@ -113,7 +113,7 @@ def gs64decode(data):
    return passenc(base64.b64decode(data))
 
 def gs_login_proof(pwd, usr, cChal, sChal):
-   md5hex = lambda x: md5.new(x).hexdigest()
+   md5hex = lambda x: hashlib.md5(x).hexdigest()
    return md5hex(md5hex(pwd) + ' '*48 + usr + sChal + cChal + md5hex(pwd))
 
 def getMsName(gamename):

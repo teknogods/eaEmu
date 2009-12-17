@@ -1,4 +1,4 @@
-import md5
+import hashlib
 import base64
 
 from twisted.internet.threads import deferToThread
@@ -81,11 +81,11 @@ class PhpPassword(PasswordChecker):
       if len(salt) != 8:
          raise Exception('hash not long enough')
 
-      m = md5.new(salt)
+      m = hashlib.md5(salt)
       m.update(input)
       tmp_hash = m.digest()
       for i in xrange(count):
-         m = md5.new(tmp_hash)
+         m = hashlib.md5(tmp_hash)
          m.update(input)
          tmp_hash = m.digest()
 
