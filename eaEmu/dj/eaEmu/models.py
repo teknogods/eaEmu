@@ -11,13 +11,13 @@ class Game(models.Model) :
 
 
 class User(models.Model) :
-    login = models.CharField(max_length=32)
+    login = models.CharField(max_length=32, unique=True )
     firstName = models.CharField(max_length=32, null=True )
     lastName = models.CharField(max_length=32, null=True )
     password = models.CharField(max_length=34)
     created = models.DateTimeField(auto_now_add=True)
     lastLogin = models.DateTimeField(null=True)
-    email = models.CharField(max_length=32, null=True )
+    email = models.CharField(max_length=32, null=True, unique=True )
     active = models.BooleanField(default=False)
 
     def __unicode__(self):

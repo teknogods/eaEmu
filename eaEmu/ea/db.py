@@ -110,8 +110,8 @@ def syncAccount(username):
    _info = {
       'dbapiName' : 'MySQLdb',
       'host'      : 'teknogods.com',
-      'user'      : 'teknogod',
-      'passwd'    : 'hm9tzuh9',
+      'user'      : 'eaEmu-auth',
+      'passwd'    : 'rdGaNFS3LC7U5ZNp',
       'db'        : 'teknogodscom',
    }
    #_info = {'dbapiName':'sqlite3', 'database':'eaEmu.db')
@@ -156,10 +156,13 @@ class _LoginSession:
       2. if fails, whocares, continue and try whatevers in the db
       3. check the password as a hash
       4. if what's in the db is not a hash, check as plaintext as a backup (FIXME, should only check plaintext?)
-      5. show bad password if no matches or show 902 if plaintext check was made
+      5. show bad password if no matches or show 902 if plaintext check was made and failed
       '''
       def cbSync(success):
-         self.user = User.objects.get(login=username)
+         try:
+            self.user = User.objects.get(login__iexact=username)
+         except User.DoesNotExist:
+            self.user = User.objects.get(email__iexact=username)
          ## HACK? delete any stale sessions before saving
          for e in LoginSession.objects.filter(user=self.user):
             e.delete()
@@ -168,13 +171,12 @@ class _LoginSession:
 
       def ebSync(err):
          err.trap(errors.BackendFail)
-         ## TODO: change this behavior? reraise instead?
          print('Couldn\'t sync account for {0}; falling back to what\'s in the db.'.format(username))
-         return defer.succeed(False).addCallback(cbSync) ## dunno if this is proper...
+         return defer.succeed(False).addCallback(cbSync) ## behave as though we actually succeeded
 
       def ebGetUser(err):
          err.trap(User.DoesNotExist)
-         raise errors.AccountNotFound()
+         raise errors.BackendFail()
 
       def cbGotUser(user):
          if not user.active:

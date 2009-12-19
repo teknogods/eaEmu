@@ -409,13 +409,13 @@
         <dia:point val="1.7,3.05"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="1.65,3;16.88,11.5"/>
+        <dia:rectangle val="1.65,3;19.19,11.5"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
         <dia:point val="1.7,3.05"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="15.130000000000001"/>
+        <dia:real val="17.440000000000001"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
         <dia:real val="8.4000000000000004"/>
@@ -516,7 +516,7 @@
             <dia:string>#varchar(32)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>##</dia:string>
+            <dia:string>#unique=True#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -654,7 +654,7 @@
             <dia:string>#varchar(32)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#null=True#</dia:string>
+            <dia:string>#null=True, unique=True#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
