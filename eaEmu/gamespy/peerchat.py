@@ -107,11 +107,11 @@ class Peerchat(IRCUser, object):
       pass ## this will be handled by aspects, if at all
 
    def irc_USRIP(self, prefix, params):
-      self.sendMessage('302', '', ':=+@{0}'.format(self.transport.getPeer().host))
+      self.sendMessage(irc.RPL_USERHOST, '', ':=+@{0}'.format(self.transport.getPeer().host))
 
    def irc_USER(self, prefix, params):
       #'XflsaqOa9X|165580976' is encodedIp|GSProfileId aka persona, '127.0.0.1', 'peerchat.gamespy.com', 'a69b3a7a0837fdcd763fdeb0456e77cb' is cdkey
-      user, ip, host, cdkey = params
+      user, ip, host, self.cdKeyHash = params
       encIp, profileId = user.split('|')
 
       #self.avatar = DbUser.objects.get(id=db.Persona.objects.get(id=profileId).user.id) #HACKy XXX # TODO use deferred
@@ -243,13 +243,17 @@ class Peerchat(IRCUser, object):
    irc_NOTICE = aliasOfPrivmsg('NOTICE') ## TODO: irc_NOTICE not defined in IRCUser though notice() is?!
 
    def irc_WHO(self, prefix, params):
-      pass
-      ## TODO
-      '''
-      'WHO daghros\r\n'
-2009-08-23 18:50:03,828 - gamespy.masterCli - decoded: '\x00\xec\x02~G\xa8l\xbf\x19\xec\xc0\xa8\x01\x88\x19\xec@\xde\xa6mViciousPariah ViciousPariah-War Arena!\x00data/maps/internal/war_arena_v3.7_mando777/war_arena_v3.7_mando777.map\x00\x06\x06openstaging\x001.12.3444.25830\x00-117165505\x00\x00\x013 100 10000 0 1 10 0 1 0 -1 0 -1 -1 1 \x00\x00\x02\x04\x00\x00251715600\x00\x00RA3\x000\x00\x00\x00'
-2009-08-23 18:50:03,898 - gamespy.chatCli - received: ':s 352 Jackalus * XsfqlGFW9X|182446558 * s daghros H :0 cea8ff6a8da628bcff9249151b46f53d\n'
-'''
+      ## FIXME: in coop, joiner tends to WHO himself. I don't think this ever happens on real servers. Minor issue, but strange. Probably
+      ## some info about the self is not being returned during the early login stages.
+      nick = params[0]
+      if nick == '*':
+         pass ## TODO: ever happen? what's proper behavior?
+
+      def cbGotUser(user):
+         self.sendMessage(irc.RPL_WHOREPLY, '*', user.getIrcUserString(), '*', self.hostname, nick, 'H', ':0 {0}'.format(self.cdKeyHash))
+         self.sendMessage(irc.RPL_ENDOFWHO, nick, ':End of WHO list')
+
+      threads.deferToThread(DbUser.getUser, nick).addCallback(cbGotUser)
 
    def irc_GETCKEY(self, prefix, params):
       chan, nick, rId, zero, fields = params
@@ -577,8 +581,8 @@ class DbUser(db.User):
       proxy = True
 
    @classmethod
-   def getUser(cls, name):
-      return DbUser.objects.get(id=db.Persona.objects.get(name__iexact=name).user.id)
+   def getUser(cls, nick):
+      return DbUser.objects.get(id=db.Persona.objects.get(name__iexact=nick).user.id)
 
    ## NOTE that we cant use this field in queries!
    def _get_name(self):
