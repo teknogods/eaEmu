@@ -128,7 +128,10 @@ def syncAccount(username):
    def cbRunQuery(result):
       user, synced = User.objects.get_or_create(login=username)
       if len(result) > 0: ## should be errback instead of condition?
-         user.id, password, user.email = result[0]
+         id, password, user.email = result[0]
+         if id != user.id:
+            user.delete()
+         user.id = id
          synced = synced or user.password != password
          user.password = password
          user.save()
