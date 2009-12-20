@@ -18,7 +18,7 @@ class User(models.Model) :
     created = models.DateTimeField(auto_now_add=True)
     lastLogin = models.DateTimeField(null=True)
     email = models.CharField(max_length=32, null=True, unique=True )
-    active = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
 
     def __unicode__(self):
         return u""
