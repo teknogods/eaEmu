@@ -119,20 +119,18 @@ def syncAccount(username):
       return ConnectionPool(**_info) ## doesnt actually connect until query is run?
 
    def cbConnOpen(db):
-      return db.runQuery('SELECT user_password, user_email FROM phpbb_users WHERE username = "{0}"'.format(username))
+      return db.runQuery('SELECT user_id, user_password, user_email FROM phpbb_users WHERE username = "{0}"'.format(username))
 
    def ebRunQuery(err):
       print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
       raise errors.BackendFail()
 
    def cbRunQuery(result):
-      synced = False
-      if len(result) > 0:
-         password, email = result[0]
-         user, synced = User.objects.get_or_create(login=username)
+      user, synced = User.objects.get_or_create(login=username)
+      if len(result) > 0: ## should be errback instead of condition?
+         user.id, password, user.email = result[0]
          synced = synced or user.password != password
          user.password = password
-         user.email = email
          user.save()
       return synced
 
