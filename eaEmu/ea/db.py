@@ -14,6 +14,7 @@ try:
    from ..dj import settings
    import django.conf
    import django.db.models
+   from django.db.models import Q
    if not django.conf.settings.configured:
       django.conf.settings.configure(**settings.__dict__)
    from ..dj.eaEmu.models import *
@@ -119,23 +120,20 @@ def syncAccount(username):
       return ConnectionPool(**_info) ## doesnt actually connect until query is run?
 
    def cbConnOpen(db):
-      return db.runQuery('SELECT user_id, user_password, user_email FROM phpbb_users WHERE username = "{0}"'.format(username))
+      return db.runQuery('SELECT user_id, username, user_password, user_email FROM phpbb_users WHERE username_clean LIKE LOWER("{0}") or user_email LIKE LOWER("{0}")'.format(username))
 
    def ebRunQuery(err):
       print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
       raise errors.BackendFail()
 
    def cbRunQuery(result):
-      user, synced = User.objects.get_or_create(login=username)
-      if len(result) > 0: ## should be errback instead of condition?
-         id, password, user.email = result[0]
-         if id != user.id:
-            user.delete()
-         user.id = id
-         synced = synced or user.password != password
-         user.password = password
-         user.save()
-      return synced
+      try:
+         user = User.objects.get(Q(email__iexact=username) | Q(login__iexact=username))
+      except User.DoesNotExist:
+         user = User()
+      user.phpbb_id, user.login, user.password, user.email = result[0]
+      user.save()
+      return user
 
    #dfr.setTimeout(5) ## FIXME: this doesnt work as expected
    return deferToThread(openDbConn).addCallbacks(cbConnOpen).addCallbacks(cbRunQuery, ebRunQuery)
@@ -159,11 +157,8 @@ class _LoginSession:
       4. if what's in the db is not a hash, check as plaintext as a backup (FIXME, should only check plaintext?)
       5. show bad password if no matches or show 902 if plaintext check was made and failed
       '''
-      def cbSync(success):
-         try:
-            self.user = User.objects.get(login__iexact=username)
-         except User.DoesNotExist:
-            self.user = User.objects.get(email__iexact=username)
+      def cbSync(user):
+         self.user = user
          ## HACK? delete any stale sessions before saving
          for e in LoginSession.objects.filter(user=self.user):
             e.delete()
@@ -173,7 +168,8 @@ class _LoginSession:
       def ebSync(err):
          err.trap(errors.BackendFail)
          print('Couldn\'t sync account for {0}; falling back to what\'s in the db.'.format(username))
-         return defer.succeed(False).addCallback(cbSync) ## behave as though we actually succeeded
+         user = User.objects.get(Q(email__iexact=username) | Q(login__iexact=username))
+         return defer.succeed(user).addCallback(cbSync) ## behave as though we actually succeeded
 
       def ebGetUser(err):
          err.trap(User.DoesNotExist)

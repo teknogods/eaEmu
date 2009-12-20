@@ -527,7 +527,7 @@ class DbGroup(db.Channel):
             ## clients and they do a GETCKEY on that user.
             try:
                self.stats_set.get(persona__user=client.avatar).delete()
-            except Stats.DoesNotExist:
+            except db.Stats.DoesNotExist:
                pass
             ## notify other clients in this group
             calls = []

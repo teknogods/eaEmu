@@ -11,12 +11,12 @@ ADMINS = (
 MANAGERS = ADMINS
 
 ## sqlite3 db
-DATABASE_ENGINE = 'sqlite3'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-import os; DATABASE_NAME = os.path.abspath('eaEmu.db')             # Or path to database file if using sqlite3.
+#DATABASE_ENGINE = 'sqlite3'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+#import os; DATABASE_NAME = os.path.abspath('eaEmu.db')             # Or path to database file if using sqlite3.
 
 ## mysql db
-#DATABASE_ENGINE = 'mysql'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-#DATABASE_NAME = 'eaEmu'             # Or path to database file if using sqlite3.
+DATABASE_ENGINE = 'mysql'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+DATABASE_NAME = 'eaEmu'             # Or path to database file if using sqlite3.
 DATABASE_USER = 'eaEmu'             # Not used with sqlite3.
 DATABASE_PASSWORD = 'HZeLpG2rB825LnFc'         # Not used with sqlite3.
 ##setup account and listening interfaces before using DATABASE_HOST

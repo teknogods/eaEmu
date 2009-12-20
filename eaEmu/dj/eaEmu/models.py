@@ -11,14 +11,14 @@ class Game(models.Model) :
 
 
 class User(models.Model) :
+    phpbb_id = models.IntegerField(null=True, unique=True)
     login = models.CharField(max_length=32, unique=True )
-    firstName = models.CharField(max_length=32, null=True )
-    lastName = models.CharField(max_length=32, null=True )
     password = models.CharField(max_length=34)
     created = models.DateTimeField(auto_now_add=True)
     lastLogin = models.DateTimeField(null=True)
     email = models.CharField(max_length=32, null=True, unique=True )
     active = models.BooleanField(default=True)
+    notes = models.CharField(max_length=200, null=True )
 
     def __unicode__(self):
         return u""
