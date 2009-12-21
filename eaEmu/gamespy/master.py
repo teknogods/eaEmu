@@ -1,4 +1,5 @@
 import logging
+import threading
 import re
 import base64
 import struct
@@ -7,6 +8,7 @@ from datetime import datetime, timedelta
 
 from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.protocols.portforward import *
+from twisted.internet.tcp import Server
 
 from . import db
 from .. import util
@@ -383,19 +385,26 @@ class QueryMaster(Protocol):
          + '\x00\xff\xff\xff\xff'
       )
 
+## these aspects are kind of sloppy. Before, I was wrapping self.transport.write
+## from within a wrapped connectionMade, but the problem was I was getting stack
+## overflows because the wraps were never peeled back off. I tried adding this in,
+## but got exceptions whenever I tried to peel off the last wrap. I figured it's better
+## to only wrap once, anyway, so now I'm wrapping Server.write since that's what's
+## always used as self.transport it seems.
+@aspects.Aspect(Server)
+class QueryMasterTransportEncryption(object):
+   def write(self, bytes):
+      if isinstance(self.protocol, QueryMaster):
+         bytes = (
+            # first byte ^ 0xec is hdr content length, second ^ 0xea is salt length
+            struct.pack('!BxxB', 0xEC ^ 2, 0xEA ^ len(self.protocol.cipher.salt)) # 0 len hdr works too...
+            + self.protocol.cipher.salt.tostring()
+            + self.protocol.cipher.encrypt(bytes)
+         )
+      yield aspects.proceed(self, bytes)
+
 @aspects.Aspect(QueryMaster)
 class QueryMasterEncryption(object):
-   def connectionMade(self):
-      yield aspects.proceed
-      def writeWrap(self_transport, data):
-         yield aspects.proceed(self_transport,
-            # first byte ^ 0xec is hdr content length, second ^ 0xea is salt length
-            struct.pack('!BxxB', 0xEC ^ 2, 0xEA ^ len(self.cipher.salt)) # 0 len hdr works too...
-            + self.cipher.salt.tostring()
-            + self.cipher.encrypt(data)
-         )
-      aspects.with_wrap(writeWrap, self.transport.write)
-
    def dataReceived(self, data):
       # everytime a request comes in, re-init the cipher
       msg = QueryMasterMessage.getMessage(data)

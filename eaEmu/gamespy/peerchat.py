@@ -1,5 +1,6 @@
 from __future__ import print_function
 import logging
+import threading
 import re
 
 from twisted.words.protocols import irc
@@ -14,6 +15,7 @@ from zope.interface import implements
 from twisted.internet import defer, threads
 from twisted.words import iwords
 from twisted.python import failure
+from twisted.internet.tcp import Server
 
 from . import db
 from .cipher import *
@@ -822,16 +824,26 @@ class ProxyPeerchatServerFactory(ProxyFactory):
       return p
 
 ##TODO: make a generic logging aspect for all Protocol objects to capture receives and sends and log based on module name
+
+## these aspects are kind of sloppy. Before, I was wrapping self.transport.write
+## from within a wrapped connectionMade, but the problem was I was getting stack
+## overflows because the wraps were never peeled back off. I tried adding this in,
+## but got exceptions whenever I tried to peel off the last wrap. I figured it's better
+## to only wrap once, anyway, so now I'm wrapping Server.write since that's what's
+## always used as self.transport it seems.
+@aspects.Aspect(Server)
+class PeerchatTransportEncryption(object):
+   def write(self, bytes):
+      if isinstance(self.protocol, Peerchat):
+         if self.protocol.doCrypt:
+            bytes = self.protocol.sCipher.crypt(bytes)
+      yield aspects.proceed(self, bytes)
+
 @aspects.Aspect(Peerchat)
 class PeerchatEncryption(object):
    def connectionMade(self):
       self.doCrypt = False
       yield aspects.proceed
-      def writeWrap(self_transport, data):
-         if self.doCrypt:
-            data = self.sCipher.crypt(data)
-         yield aspects.proceed(self_transport, data)
-      aspects.with_wrap(writeWrap, self.transport.write)
 
    def dataReceived(self, data):
       if self.doCrypt:
