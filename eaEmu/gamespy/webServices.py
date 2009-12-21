@@ -1,6 +1,9 @@
+import re
+
 from twisted.web.server import Site
 from twisted.web.resource import Resource
 from twisted.web.static import File
+from twisted.web.error import NoResource
 
 # generate the classes with 'wsdl2py -wb http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx?WSDL'
 from soap.StorageServer_server import *
@@ -8,6 +11,7 @@ from soap.StorageServer_server import StorageServer as StorageServerBase
 
 # TODO: use this for logging
 from .. import util
+from ..util import aspects
 import logging # delme once switched
 
 class StorageServer(StorageServerBase):
@@ -86,12 +90,29 @@ class CompetitionService(CompetitionServiceBase):
 
       return request, result
 
+class VirtualFile(File):
+   _virtualLinks = {
+      ## map all patchinfos to english_1.12
+      re.compile(r'(?P<game>.*)_(?P<lang>.*)_(?P<version>.*)\.patchinfo') : 'current.patchinfo',
+      ## map all motd to english
+      re.compile(r'MOTD-(?P<lang>.*).txt') : 'MOTD-english.txt',
+   }
+   def getChild(self, path, request):
+      resource = File.getChild(self, path, request)
+      if isinstance(resource, NoResource):
+         for pat, repl in self._virtualLinks.iteritems():
+            newPath = pat.sub(repl, path)
+            if newPath != path:
+               resource = File.getChild(self, newPath, request)
+               break
+      return resource
+
 class WebServer(Site):
    def __init__(self):
       root = Resource()
 
       ## downloads server -- client grabs patch info from here
-      root.putChild('u', File('webRoot/downloads/u'))
+      root.putChild('u', VirtualFile('webRoot/downloads/u'))
 
       ## MOST OF THE BELOW DONT WORK SO ARE COMMENTED OUT
 
