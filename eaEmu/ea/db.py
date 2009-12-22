@@ -127,6 +127,8 @@ def syncAccount(username):
       raise errors.BackendFail()
 
    def cbRunQuery(result):
+      if len(result) == 0:
+         raise errors.BackendFail()
       try:
          user = User.objects.get(Q(email__iexact=username) | Q(login__iexact=username))
       except User.DoesNotExist:
