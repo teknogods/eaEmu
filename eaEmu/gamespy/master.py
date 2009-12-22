@@ -394,7 +394,8 @@ class QueryMaster(Protocol):
 @aspects.Aspect(Server)
 class QueryMasterTransportEncryption(object):
    def write(self, bytes):
-      if isinstance(self.protocol, QueryMaster):
+      ## TLS connections don't have the protocol attribute
+      if hasattr(self, 'protocol') and isinstance(self.protocol, QueryMaster):
          bytes = (
             # first byte ^ 0xec is hdr content length, second ^ 0xea is salt length
             struct.pack('!BxxB', 0xEC ^ 2, 0xEA ^ len(self.protocol.cipher.salt)) # 0 len hdr works too...

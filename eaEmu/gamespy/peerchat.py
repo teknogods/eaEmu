@@ -834,7 +834,8 @@ class ProxyPeerchatServerFactory(ProxyFactory):
 @aspects.Aspect(Server)
 class PeerchatTransportEncryption(object):
    def write(self, bytes):
-      if isinstance(self.protocol, Peerchat):
+      ## TLS connections don't have the protocol attribute
+      if hasattr(self, 'protocol') and isinstance(self.protocol, Peerchat):
          if self.protocol.doCrypt:
             bytes = self.protocol.sCipher.crypt(bytes)
       yield aspects.proceed(self, bytes)
