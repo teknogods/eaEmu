@@ -196,7 +196,15 @@ class _LoginSession:
             raise errors.BackendAndPasswordFail() ## notify that non-forum password was incorrect
          return defer.maybeDeferred(PlainTextPassword(user).check, pwd).addCallback(cbUserAuth, user).addErrback(ebBadPwd)
 
-      return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser)
+      if config.get('lanMode', False):
+         ## In lan mode, you can log in as anybody. The account gets created ad-hoc.
+         try:
+            user = User.objects.get(Q(email__iexact=username) | Q(login__iexact=username))
+         except:
+            user = User.objects.create(login=username, password=pwd)
+         return defer.succeed(user).addCallback(cbSync)
+      else:
+         return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser)
 
 @aspects.Aspect(Theater)
 class _TheaterWrap:
