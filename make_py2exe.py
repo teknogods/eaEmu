@@ -23,6 +23,7 @@ def main(argv=None):
     'aspects',
     'sqlite3',
     'ZSI.schema',
+    'yaml',
     ])
     buildpy('eaEmu.tac', pyFiles)
 

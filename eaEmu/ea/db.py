@@ -196,13 +196,19 @@ class _LoginSession:
             raise errors.BackendAndPasswordFail() ## notify that non-forum password was incorrect
          return defer.maybeDeferred(PlainTextPassword(user).check, pwd).addCallback(cbUserAuth, user).addErrback(ebBadPwd)
 
+      def cbCheckNumSessions(user):
+         if LoginSession.objects.count() > 2:
+            raise Exception('You may only login with a maximum of 2 clients in LAN Mode. Restart the server if you think this error shouldn\'t be happening.')
+         else:
+            return user
+
       if config.get('lanMode', False):
          ## In lan mode, you can log in as anybody. The account gets created ad-hoc.
          try:
             user = User.objects.get(Q(email__iexact=username) | Q(login__iexact=username))
          except:
             user = User.objects.create(login=username, password=pwd)
-         return defer.succeed(user).addCallback(cbSync)
+         return defer.succeed(user).addCallback(cbSync).addCallback(cbCheckNumSessions)
       else:
          return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser)
 
@@ -258,3 +264,8 @@ class _TheaterWrap:
          return GameSession.objects.get(id=game_id)
       elif host != None:
          return User.objects.get(login=host).player_set[0]
+
+
+##HACK: clean login sessions at startup
+for sess in LoginSession.objects.all():
+   sess.delete()
