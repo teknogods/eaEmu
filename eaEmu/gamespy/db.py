@@ -1,16 +1,16 @@
 import re
 
 from ..util import aspects
+from .. import config
 
 #TODO: split gamespy stuff into it's own db?
 
 # TODO: clean up this import stuff
 try:
-   from ..dj import settings
    import django.conf
    if not django.conf.settings.configured:
-      django.conf.settings.configure(**settings.__dict__)
-   from ..dj.eaEmu.models import *
+      django.conf.settings.configure(**config['django'])
+   from ..models import *
 except Exception, ex:
    print 'Exception while importing django modules:', ex
 

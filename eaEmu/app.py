@@ -1,4 +1,7 @@
 ## TODO: this file is just dregs ATM
+## things to salvage from here:
+##  * move server:port lists to their respective files
+##  * migrate to using twistd to launch gui reactor
 from __future__ import print_function
 import warnings
 warnings.simplefilter('ignore', DeprecationWarning)

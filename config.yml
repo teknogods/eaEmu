@@ -1,0 +1,54 @@
+django:
+   DATABASE_ENGINE: mysql
+   DATABASE_HOST: localhost
+   DATABASE_PORT: 3306
+   DATABASE_USER: eaEmu
+   DATABASE_PASSWORD: HZeLpG2rB825LnFc
+   DATABASE_NAME: eaEmu
+
+   DEBUG: true
+
+   INSTALLED_APPS:
+      - django_evolution
+      - dj.eaEmu
+
+   ADMINS: &admins
+      - [elitak, elitak@gmail.com]
+   MANAGERS: *admins
+
+   TIME_ZONE: America/Los_Angeles
+   USE_I18N: true
+   LANGUAGE_CODE: en-us
+
+   MEDIA_ROOT: ""
+   MEDIA_URL: ""
+   ADMIN_MEDIA_PREFIX: /media/
+
+   ROOT_URLCONF: djproj.urls
+   SECRET_KEY: d$6xxdqiqys!mjx9=8&1!w-5hi4stq%z(00v#i025*7+9i5d5d
+   SITE_ID: 1
+   TEMPLATE_DEBUG: true
+   TEMPLATE_DIRS: []
+   TEMPLATE_LOADERS:
+      - django.template.loaders.filesystem.load_template_source
+      - django.template.loaders.app_directories.load_template_source
+   MIDDLEWARE_CLASSES:
+      - django.middleware.common.CommonMiddleware
+      - django.contrib.sessions.middleware.SessionMiddleware
+      - django.contrib.auth.middleware.AuthenticationMiddleware
+
+phpbb_db:
+   connection:
+      dbapiName : MySQLdb
+      host      : teknogods.com
+      user      : eaEmu-auth
+      passwd    : rdGaNFS3LC7U5ZNp
+      db        : teknogodscom
+#   connection:
+#      dbapiName : sqlite3
+#      database  : eaEmu.db
+
+tap:
+   eaEmu:
+      module: eaEmu.ea.games.redalert3
+      webPort: 8001

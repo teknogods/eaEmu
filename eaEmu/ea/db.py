@@ -9,15 +9,15 @@ from ..gamespy.cipher import *
 from ..util.password import *
 from ..util import aspects
 from . import errors
+from .. import config
 
 try:
-   from ..dj import settings
    import django.conf
    import django.db.models
    from django.db.models import Q
    if not django.conf.settings.configured:
-      django.conf.settings.configure(**settings.__dict__)
-   from ..dj.eaEmu.models import *
+      django.conf.settings.configure(**config['django'])
+   from ..models import *
 except Exception, e:
    print 'Exception while importing django modules:', e
    # generate dummy classes here so we can at least load up
@@ -108,16 +108,8 @@ class _StatsWrap:
 
 def syncAccount(username):
    ## TODO: maybe grab this info from same database as the one in eaEmu.dj.settings?
-   _info = {
-      'dbapiName' : 'MySQLdb',
-      'host'      : 'teknogods.com',
-      'user'      : 'eaEmu-auth',
-      'passwd'    : 'rdGaNFS3LC7U5ZNp',
-      'db'        : 'teknogodscom',
-   }
-   #_info = {'dbapiName':'sqlite3', 'database':'eaEmu.db')
    def openDbConn():
-      return ConnectionPool(**_info) ## doesnt actually connect until query is run?
+      return ConnectionPool(**config['phpbb_db']['connection']) ## doesnt actually connect until query is run?
 
    def cbConnOpen(db):
       return db.runQuery('SELECT user_id, username, user_password, user_email FROM phpbb_users WHERE username_clean LIKE LOWER("{0}") or user_email LIKE LOWER("{0}")'.format(username))

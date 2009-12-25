@@ -71,7 +71,7 @@ addresses = [
 ]
 
 class Service(MultiService):
-   def __init__(self, **config):
+   def __init__(self, **options):
       MultiService.__init__(self)
       sCtx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
 
@@ -79,7 +79,7 @@ class Service(MultiService):
       ## it must be set up to use rewriterules (for /u downloads)
       ## and name-based virtual hosting (for SOAP hosts) in order to redirect from port 80 to 8001
       ## or whatever the server is set to run on
-      self.addService(TCPServer(config['webPort'], gamespy.webServices.WebServer()))
+      self.addService(TCPServer(options['webPort'], gamespy.webServices.WebServer()))
 
       ## TODO: redalert3pc.natneg{1,2,3}.gamespy.com
       ## This is a pretty simple service that allows 2 endpoints to udp punch thru their NAT routers.
