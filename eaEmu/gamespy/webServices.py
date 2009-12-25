@@ -92,19 +92,18 @@ class CompetitionService(CompetitionServiceBase):
 
 class VirtualFile(File):
    _virtualLinks = {
-      ## map all patchinfos to english_1.12
+      ## map all patchinfos to current.patchinfo
       re.compile(r'(?P<game>.*)_(?P<lang>.*)_(?P<version>.*)\.patchinfo') : 'current.patchinfo',
       ## map all motd to english
       re.compile(r'MOTD-(?P<lang>.*).txt') : 'MOTD-english.txt',
    }
    def getChild(self, path, request):
       resource = File.getChild(self, path, request)
-      if isinstance(resource, NoResource):
-         for pat, repl in self._virtualLinks.iteritems():
-            newPath = pat.sub(repl, path)
-            if newPath != path:
-               resource = File.getChild(self, newPath, request)
-               break
+      for pat, repl in self._virtualLinks.iteritems():
+         newPath = pat.sub(repl, path)
+         if newPath != path:
+            resource = File.getChild(self, newPath, request)
+            break
       return resource
 
 class WebServer(Site):
