@@ -524,13 +524,13 @@ class DbGroup(db.Channel):
 
          if self.users.filter(id=client.avatar.id).count(): ## if in channel
             self.users.remove(client.avatar)
-            ## delete stats object
+            ## delete stats objects
             ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
             ## clients and they do a GETCKEY on that user.
-            try:
-               self.stats_set.get(persona__user=client.avatar).delete()
-            except db.Stats.DoesNotExist:
-               pass
+
+            ## FIXME: there should only ever be 1 stats obj per user-channel combo. Fix this elsewhere. Like at creation.
+            for obj in self.stats_set.filter(persona__user=client.avatar):
+               obj.delete()
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id):
