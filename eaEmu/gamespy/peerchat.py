@@ -1,8 +1,8 @@
 from __future__ import print_function
 import logging
-import threading
 import re
 
+from django.db import transaction
 from twisted.words.protocols import irc
 from twisted.words.protocols.irc import lowQuote
 from twisted.internet.protocol import ServerFactory
@@ -454,7 +454,7 @@ class PeerchatFactory(IRCFactory):
 
 ## TODO: check that interfac is fully implemented
 @aspects.Aspect(Channel)
-class ChannelWrap(object):
+class _Channel(object):
    implements(iwords.IGroup)
 
    def __init__(self, *args, **kw):
@@ -484,6 +484,11 @@ class ChannelWrap(object):
 
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
+      ## FIXME: this is still broken. Spamming chans switches will raise "user already in chan" if
+      ## done enough (PART 1; JOIN 1 causes this). The proper thing to do is to use the same lock for
+      ## add and remove per user. This is difficult because the lock can't be persisted in the db and
+      ## I don't feel like maintaining anothe lookup dict is a good solution.
+      @transaction.commit_on_success
       def dbOps():
          if client.avatar not in self.users.all():
             ## set mode for user in this channel
@@ -514,6 +519,7 @@ class ChannelWrap(object):
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
+      @transaction.commit_on_success
       def dbOps():
          def cbUsersRemoved(results):
             if self.name.lower().startswith('gsp') and self.users.count() == 0:
@@ -567,7 +573,7 @@ class ChannelWrap(object):
 
 ## TODO: check that interface is fully implemented
 @aspects.Aspect(User)
-class UserWrap(object):
+class _User(object):
    implements(iwords.IUser)
 
    # FIXME: these are not preserved in db
