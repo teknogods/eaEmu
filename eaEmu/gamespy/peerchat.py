@@ -17,24 +17,24 @@ from twisted.words import iwords
 from twisted.python import failure
 from twisted.internet.tcp import Server
 
-from . import db
+from .db import *
 from .cipher import *
 from .. import util
 from ..util import aspects
 from ..util.timer import KeepaliveService
 
-## FIXME: this is in here because it's coupled with DbUser
+## FIXME: this is in here because it's coupled with User
 from ..util import aspects
-@aspects.Aspect(db.Stats)
+@aspects.Aspect(Stats)
 class _StatsWrap:
    def dumpFields(self, fields, withNames=False):
       #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
       fieldVals = {}
       for fld in fields:
          if fld == 'username':
-            ## this is pretty HACKy, but needed cuz i dont want to do a db query for the DbUser version
+            ## this is pretty HACKy, but needed cuz i dont want to do a db query for the User version
             ## of this object
-            fieldVals[fld] = DbUser.__dict__['getIrcUserString'](self.persona.user)
+            fieldVals[fld] = User.__dict__['getIrcUserString'](self.persona.user)
          elif fld == 'b_arenaTeamID':
             val = getattr(self, fld)
             fieldVals[fld] = val and val.id or 0 # use zero if field is null (very rare case)
@@ -49,7 +49,7 @@ class _StatsWrap:
 
 
 
-## TODO: all db access should go into DbGroup and DbUser
+## TODO: all db access should go into Channel and User
 ## They should also all use Deferreds
 
 
@@ -116,7 +116,7 @@ class Peerchat(IRCUser, object):
       user, ip, host, self.cdKeyHash = params
       encIp, profileId = user.split('|')
 
-      #self.avatar = DbUser.objects.get(id=db.Persona.objects.get(id=profileId).user.id) #HACKy XXX # TODO use deferred
+      #self.avatar = User.objects.get(id=Persona.objects.get(id=profileId).user.id) #HACKy XXX # TODO use deferred
       #assert self.avatar.getIrcUserString() == user
 
       ## NOTE: don't call supermethod here
@@ -144,7 +144,7 @@ class Peerchat(IRCUser, object):
 
       # Here is the fix for impersonation: use name found during USER command
       # TODO: remove this when new auth methods are plugged in
-      #self.nick = db.Persona.objects.get(user=self.avatar, selected=True).name
+      #self.nick = Persona.objects.get(user=self.avatar, selected=True).name
 
       IRCUser.irc_NICK(self, prefix, params) ## sends _welcomeMessage
 
@@ -158,7 +158,7 @@ class Peerchat(IRCUser, object):
       ## db initializations go here (TODO: move them)
 
       ## create user mode object
-      info = db.UserIrcInfo.objects.get_or_create(user=self.avatar, channel=None)
+      info = UserIrcInfo.objects.get_or_create(user=self.avatar, channel=None)
 
 
    def irc_PONG(self, prefix, params):
@@ -193,7 +193,7 @@ class Peerchat(IRCUser, object):
       it checks for  the 'command' key in the message dict for UTM etc. and sends
       that command instead.
 
-      Remember that sender and recipient are IChatClients, so use .user to get DbUser
+      Remember that sender and recipient are IChatClients, so use .user to get User
       '''
       if iwords.IGroup.providedBy(recipient):
          recipientName = '#' + recipient.name
@@ -255,7 +255,7 @@ class Peerchat(IRCUser, object):
          self.sendMessage(irc.RPL_WHOREPLY, '*', user.getIrcUserString(), '*', self.hostname, nick, 'H', ':0 {0}'.format(self.cdKeyHash))
          self.sendMessage(irc.RPL_ENDOFWHO, nick, ':End of WHO list')
 
-      threads.deferToThread(DbUser.getUser, nick).addCallback(cbGotUser)
+      threads.deferToThread(User.getUser, nick).addCallback(cbGotUser)
 
    def irc_GETCKEY(self, prefix, params):
       chan, nick, rId, zero, fields = params
@@ -269,10 +269,10 @@ class Peerchat(IRCUser, object):
 
       def cbGroup(group):
          if nick == '*':
-            #users = db.Channels.objects.get(name__iexact=group.name).users.filter(loginsession__isnull=False) ## HACK race condition here?
+            #users = Channel.objects.get(name__iexact=group.name).users.filter(loginsession__isnull=False) ## HACK race condition here?
             users = group.iterusers()
          else:
-            users = [db.Persona.objects.get(name__iexact=nick).user]
+            users = [Persona.objects.get(name__iexact=nick).user]
 
          calls = []
          for user in users:
@@ -282,9 +282,9 @@ class Peerchat(IRCUser, object):
                response = stats.dumpFields(fields)
                self.sendMessage('702', chan, name, rId, response)
 
-            calls.append(db.Stats.getStats(name, group.name))
+            calls.append(Stats.getStats(name, group.name))
             calls[-1].addCallback(cbStats, name)
-            #objects.get_or_create(persona=user.getPersona(), channel=DbGroup.objects.get(name__iexact=grp))[0] #TODO: defer
+            #objects.get_or_create(persona=user.getPersona(), channel=Channel.objects.get(name__iexact=grp))[0] #TODO: defer
 
          def cbDone(results):
             self.sendMessage('703', chan, rId, ':End of GETCKEY')
@@ -310,7 +310,7 @@ class Peerchat(IRCUser, object):
 
       def cbUpdateAndSave(stats):
          if 'b_arenaTeamID' in changes:
-            changes['b_arenaTeamID'] = db.ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
+            changes['b_arenaTeamID'] = ArenaTeam.objects.get_or_create(id=changes['b_arenaTeamID'])[0]
          for k, v in changes.iteritems(): setattr(stats, k, v)
          def save():
             stats.save()
@@ -340,7 +340,7 @@ class Peerchat(IRCUser, object):
          self.receive(self, group, msg)
 
       defer.DeferredList([
-         db.Stats.getStats(self.name, grp).addCallback(cbUpdateAndSave),
+         Stats.getStats(self.name, grp).addCallback(cbUpdateAndSave),
          self.realm.lookupGroup(grp).addErrback(ebGroup),
       ]).addCallback(cbRespond).addErrback(ebRespond)
 
@@ -446,27 +446,26 @@ class PeerchatFactory(IRCFactory):
 
 ## INTEGRAGTION TODO:
 ## follow naming, callback convention, db abstraction
-## move all db stuff to DbGroup and DbUser
+## move all db stuff to Channel and User
 ## TODO:
 ## * all db access should use deferToThread
 ## * figure out deferred chain in addGroup
-## * this class should be an Aspect of db.Group
+## * this class should be an Aspect of Group
 
 ## TODO: check that interfac is fully implemented
-class DbGroup(db.Channel):
+@aspects.Aspect(Channel)
+class ChannelWrap(object):
    implements(iwords.IGroup)
 
-   class Meta:
-      proxy = True
-
    def __init__(self, *args, **kw):
-      db.Channel.__init__(self, *args, **kw)
+      #Channel.__init__(self, *args, **kw)
+      yield aspects.proceed
 
       ## FIXME: remove this HACK or at least find better way to check if a new chan
       if self.id is None: ## is this channel newly created (eg, gamelobby GSP chan)
          self.save() ## save so we can store clients in clientMap
 
-      ## self.users is in the db and contains DbUser objects
+      ## self.users is in the db and contains User objects
       ## self.clients is a map from user.id to IRCUser instance
       ## these lists unfortunately have to be maintained separately :/
       ## TODO: handle this tracking better
@@ -486,21 +485,19 @@ class DbGroup(db.Channel):
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
       def dbOps():
-         #if not self.users.filter(id=client.avatar.id).count(): ## if not in channel
-         if True:
+         if client.avatar not in self.users.all():
             ## set mode for user in this channel
-            info = db.UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
+            info = UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
 
-            if self.users.count() == 0 and self.name.lower().startswith('gsp'):
-               client.avatar.setChanMode(self, '+o')
+            if self.name.lower().startswith('gsp') and self.users.count() == 0:
                ## first in private chan, promote to op
+               client.avatar.setChanMode(self, '+o')
             self.users.add(client.avatar)
             ## create stats object (get_or_create to be safe)
             self.stats_set.get_or_create(persona=client.avatar.getPersona())
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id): ## TODO: better way to write this?
-               usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
                if usr.mind is None:
                   ## HACK: this prunes clients that exited badly
                   self.users.remove(usr)
@@ -534,7 +531,6 @@ class DbGroup(db.Channel):
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id):
-               usr = DbUser(id=usr.id) ##HACK: need this cast to get "mind" property
                if usr.mind is None:
                   ## HACK: this prunes clients that exited badly
                   self.users.remove(usr)
@@ -550,13 +546,12 @@ class DbGroup(db.Channel):
 
    def iterusers(self):
       ## TODO: deferToThread
-      return iter(DbUser.objects.get(id=user.id) for user in self.users.all())
+      return iter(User.objects.get(id=user.id) for user in self.users.all())
 
    def receive(self, sender, recipient, message):
       assert recipient is self
       receives = []
       for usr in self.users.exclude(id=sender.avatar.id):
-         usr = DbUser.objects.get(id=usr.id) ##FIXME: should be no cast
          clt = usr.mind
          if clt is None:
             continue ## HACK: this is need for clients that exit badly
@@ -568,7 +563,8 @@ class DbGroup(db.Channel):
 
 
 ## TODO: check that interface is fully implemented
-class DbUser(db.User):
+@aspects.Aspect(User)
+class UserWrap(object):
    implements(iwords.IUser)
 
    # FIXME: these are not preserved in db
@@ -584,7 +580,7 @@ class DbUser(db.User):
 
    @classmethod
    def getUser(cls, nick):
-      return DbUser.objects.get(id=db.Persona.objects.get(name__iexact=nick).user.id)
+      return User.objects.get(id=Persona.objects.get(name__iexact=nick).user.id)
 
    ## NOTE that we cant use this field in queries!
    def _get_name(self):
@@ -592,14 +588,14 @@ class DbUser(db.User):
    name = property(_get_name)
 
    def _get_mind(self):
-      return DbUser.minds[self.id]
+      return User.minds[self.id]
    def _set_mind(self, value):
-      DbUser.minds[self.id] = value
+      User.minds[self.id] = value
    mind = property(_get_mind, _set_mind)
 
    def loggedIn(self, realm, mind):
       self.realm = realm
-      DbUser.minds[self.id] = mind
+      User.minds[self.id] = mind
       from time import time
       self.signOn = time()
 
@@ -612,7 +608,7 @@ class DbUser(db.User):
    def leaveAll(self, reason=None):
       departures = []
       for chan in self.channel_set.all():
-         group = DbGroup.objects.get(id=chan.id) ##FIXME this is essentially a cast
+         group = Channel.objects.get(id=chan.id) ##FIXME this is essentially a cast
          departures.append(self.leave(group, reason))
       return defer.DeferredList(departures)
 
@@ -654,7 +650,7 @@ class PeerchatRealm(WordsRealm):
    def __init__(self):
       WordsRealm.__init__(self, 's') ## 's' is what real peerchat uses (prly to save bandwidth)
       ## clean up channels from dirty exit
-      for chan in DbGroup.objects.all():
+      for chan in Channel.objects.all():
          chan.users.clear()
          if chan.name.startswith('GSP'):
             chan.delete()
@@ -672,13 +668,13 @@ class PeerchatRealm(WordsRealm):
       return logout
 
    def itergroups(self):
-      return iter(DbGroup.objects)
+      return iter(Channel.objects)
 
    def addUser(self, user):
       raise NotImplementedError
 
    def addGroup(self, group):
-      if not isinstance(group, DbGroup):
+      if not isinstance(group, Channel):
          return defer.fail() # TODO: return Failure obj as well
 
       ## TODO: try out this deferred chain
@@ -693,7 +689,7 @@ class PeerchatRealm(WordsRealm):
 
    def lookupUser(self, name):
       assert isinstance(name, unicode)
-      return threads.deferToThread(DbUser.getUser, name)
+      return threads.deferToThread(User.getUser, name)
 
    ## getGroup in parent class will call createGroup
    createGroupOnRequest = True
@@ -712,11 +708,11 @@ class PeerchatRealm(WordsRealm):
 
       def dbCall():
          if name.lower().startswith('gsp'):
-            game = db.Game.objects.get(name__iexact=name.split('!')[1]) ## TODO:better way to provide game?
+            game = Game.objects.get(name__iexact=name.split('!')[1]) ## TODO:better way to provide game?
             ## can't use __iexact in get_or_create!, btw (learned this before i split lookup/create)
-            grp = DbGroup.objects.get(name__iexact=name, prettyName__iexact=name, game=game)
+            grp = Channel.objects.get(name__iexact=name, prettyName__iexact=name, game=game)
          else:
-            grp = DbGroup.objects.get(name__iexact=name)
+            grp = Channel.objects.get(name__iexact=name)
          return grp
 
       return threads.deferToThread(dbCall)
@@ -726,10 +722,10 @@ class PeerchatRealm(WordsRealm):
 
       def dbCall():
          if name.lower().startswith('gsp'):
-            game = db.Game.objects.get(name__iexact=name.split('!')[1]) ## TODO:better way to provide game?
-            if DbGroup.objects.filter(name__iexact=name, prettyName__iexact=name, game=game).count():
+            game = Game.objects.get(name__iexact=name.split('!')[1]) ## TODO:better way to provide game?
+            if Channel.objects.filter(name__iexact=name, prettyName__iexact=name, game=game).count():
                raise Exception('Tried to create private channel that already exists.')
-            grp = DbGroup.objects.create(name=name, prettyName=name, game=game)
+            grp = Channel.objects.create(name=name, prettyName=name, game=game)
          else:
             raise Exception('Creation of public channels is disallowed.')
          return grp
@@ -820,7 +816,7 @@ class ProxyPeerchatServerFactory(ProxyFactory):
 
    def buildProtocol(self, addr):
       p = ProxyFactory.buildProtocol(self, addr)
-      p.gamekey = db.Game.getKey(self.gameName)
+      p.gamekey = Game.getKey(self.gameName)
       return p
 
 ##TODO: make a generic logging aspect for all Protocol objects to capture receives and sends and log based on module name
@@ -853,7 +849,7 @@ class PeerchatEncryption(object):
 
    def irc_CRYPT(self, prefix, params):
       # params are usually 'des', '1', 'redalertpc'
-      self.cipherFactory = PeerchatCipherFactory(db.Game.getKey(params[2]))
+      self.cipherFactory = PeerchatCipherFactory(Game.getKey(params[2]))
       self.sCipher = self.cipherFactory.getCipher()
       self.cCipher = self.cipherFactory.getCipher()
 
@@ -864,7 +860,7 @@ class PeerchatEncryption(object):
 
 ## clear out static chans at startup
 ## TODO: move or redesign this
-## maybe at DbGroup init build grp.users out of grp.clients?
-for chan in DbGroup.objects.all():
+## maybe at Channel init build grp.users out of grp.clients?
+for chan in Channel.objects.all():
    chan.users.clear()
 
