@@ -489,12 +489,13 @@ class ChannelWrap(object):
             ## set mode for user in this channel
             info = UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
 
-            if self.name.lower().startswith('gsp') and self.users.count() == 0:
+            self.users.add(client.avatar)
+            ## create corresponding stats object
+            self.stats_set.create(persona=client.avatar.getPersona())
+
+            if self.name.lower().startswith('gsp') and self.users.count() == 1:
                ## first in private chan, promote to op
                client.avatar.setChanMode(self, '+o')
-            self.users.add(client.avatar)
-            ## create stats object (get_or_create to be safe)
-            self.stats_set.get_or_create(persona=client.avatar.getPersona())
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id): ## TODO: better way to write this?
@@ -526,8 +527,10 @@ class ChannelWrap(object):
             ## clients and they do a GETCKEY on that user.
 
             ## FIXME: there should only ever be 1 stats obj per user-channel combo. Fix this elsewhere. Like at creation.
-            for obj in self.stats_set.filter(persona__user=client.avatar):
-               obj.delete()
+            #for obj in self.stats_set.filter(persona__user=client.avatar):
+               #obj.delete()
+            ## delete corresponding stats obj
+            self.stats_set.get(persona__user=client.avatar).delete()
             ## notify other clients in this group
             calls = []
             for usr in self.users.exclude(id=client.avatar.id):
@@ -863,4 +866,7 @@ class PeerchatEncryption(object):
 ## maybe at Channel init build grp.users out of grp.clients?
 for chan in Channel.objects.all():
    chan.users.clear()
+## clear stats too so that they don't get duped on new joins
+for stats in Stats.objects.all():
+   stats.delete()
 
