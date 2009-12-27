@@ -1,5 +1,6 @@
 import random
 import base64
+import threading
 from datetime import datetime
 
 from twisted.internet import defer
@@ -98,12 +99,15 @@ class _PersonaWrap:
 
 @aspects.Aspect(Stats)
 class _StatsWrap:
+   lock = threading.Lock()
    @classmethod
    def getStats(cls, name, chanName):
       def fetch():
          persona = db.Persona.objects.get(name__iexact=name)
          channel = db.Channel.objects.get(name__iexact=chanName)
-         return cls.objects.get_or_create(persona=persona, channel=channel)[0]
+         cls.lock.acquire()
+         stats = cls.objects.get_or_create(persona=persona, channel=channel)[0]
+         cls.lock.release()
       return threads.deferToThread(fetch)
 
 def syncAccount(username):
@@ -154,8 +158,10 @@ class _LoginSession:
       def cbSync(user):
          self.user = user
          ## HACK? delete any stale sessions before saving
-         print('had to delete pre-existing sessions:', LoginSession.objects.filter(user=self.user).values())
-         for e in LoginSession.objects.filter(user=self.user):
+         sessions = LoginSession.objects.filter(user=self.user)
+         if sessions.count():
+            print('Had to delete pre-existing sessions:', sessions.values())
+         for e in sessions:
             e.delete()
          self.save()
          return self.user
