@@ -484,78 +484,79 @@ class _Channel(object):
 
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
-      ## FIXME: this is still broken. Spamming chans switches will raise "user already in chan" if
-      ## done enough (PART 1; JOIN 1 causes this). The proper thing to do is to use the same lock for
-      ## add and remove per user. This is difficult because the lock can't be persisted in the db and
-      ## I don't feel like maintaining anothe lookup dict is a good solution.
       ## FIXME: I'm pretty sure the decorator here does nothing until I enforce uniqueness in the Stats table with:
       ##  class Meta:
       ##    unique_together = (('channel_id', 'user_id'),)
       ## this is probably because of bad db design :P
-      @transaction.commit_on_success
+      #@transaction.commit_on_success
       def dbOps():
-         if client.avatar not in self.users.all():
-            ## set mode for user in this channel
-            info = UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
-
-            self.users.add(client.avatar)
-            ## create corresponding stats object
-            self.stats_set.create(persona=client.avatar.getPersona())
-
-            if self.name.lower().startswith('gsp') and self.users.count() == 1:
-               ## first in private chan, promote to op
-               client.avatar.setChanMode(self, '+o')
-            ## notify other clients in this group
-            calls = []
-            for usr in self.users.exclude(id=client.avatar.id): ## TODO: better way to write this?
-               if usr.mind is None:
-                  ## HACK: this prunes clients that exited badly
-                  self.users.remove(usr)
-               dfr = defer.maybeDeferred(usr.mind.userJoined, self, client)
-               dfr.addErrback(self._ebUserCall, client=usr.mind)
-               calls.append(dfr)
-            ## cant return this from deferToThread, so there may be a race conditin if any callbacks are added to it
-            defer.DeferredList(calls).addCallback(self._cbUserCall)
-         else:
+         if client.avatar in self.users.all():
             raise Exception('User already in channel.') ##FIXME: this is bad!!!!!! user will lock up
-      return threads.deferToThread(dbOps)
+
+         ## set mode for user in this channel
+         info = UserIrcInfo.objects.get_or_create(user=client.avatar, channel=self)[0]
+
+         self.users.add(client.avatar)
+         ## create corresponding stats object
+         self.stats_set.create(persona=client.avatar.getPersona())
+
+         if self.name.lower().startswith('gsp') and self.users.count() == 1:
+            ## first in private chan, promote to op
+            client.avatar.setChanMode(self, '+o')
+         ## notify other clients in this group
+         return self.users.exclude(id=client.avatar.id)
+         #transaction.commit()
+
+      def cbNotify(users):
+         calls = []
+         for usr in users:
+            dfr = defer.maybeDeferred(usr.mind.userJoined, self, client)
+            dfr.addErrback(self._ebUserCall, client=usr.mind)
+            calls.append(dfr)
+         return defer.DeferredList(calls).addCallback(self._cbUserCall) ##prunes stale users
+
+      ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
+      ## I think this is related to the "cant create public chans" bug as well -- defertToThread seems bugged
+      return defer.maybeDeferred(dbOps).addCallback(cbNotify) ##need eb
 
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
-      @transaction.commit_on_success
+      #@synchronized(Channel)
+      #@transaction.commit_on_success
+      #@transaction.commit_manually
       def dbOps():
+         if client.avatar not in self.users.all():
+            #raise Exception('User not in channel.')
+            return self.users.exclude(id=client.avatar.id) ## who cares
+         self.users.remove(client.avatar)
+         ## FIXME: there should only ever be 1 stats obj per user-channel combo. Fix this elsewhere. Like at creation.
+         #for obj in self.stats_set.filter(persona__user=client.avatar):
+            #obj.delete()
+         ## delete corresponding stats obj
+         ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
+         ## clients and they do a GETCKEY on that user.
+         self.stats_set.get(persona__user=client.avatar).delete()
+
+         #transaction.commit()
+         return self.users.exclude(id=client.avatar.id)
+
+      def cbNotify(users):
          def cbUsersRemoved(results):
             if self.name.lower().startswith('gsp') and self.users.count() == 0:
                self.delete()
             return results
 
-         if self.users.filter(id=client.avatar.id).count(): ## if in channel
-            self.users.remove(client.avatar)
-            ## delete stats objects
-            ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
-            ## clients and they do a GETCKEY on that user.
+         calls = []
+         for usr in users:
+            dfr = defer.maybeDeferred(usr.mind.userLeft, self, client, reason)
+            dfr.addErrback(self._ebUserCall, client=usr.mind)
+            calls.append(dfr)
+         return defer.DeferredList(calls).addCallback(cbUsersRemoved)
 
-            ## FIXME: there should only ever be 1 stats obj per user-channel combo. Fix this elsewhere. Like at creation.
-            #for obj in self.stats_set.filter(persona__user=client.avatar):
-               #obj.delete()
-            ## delete corresponding stats obj
-            self.stats_set.get(persona__user=client.avatar).delete()
-            ## notify other clients in this group
-            calls = []
-            for usr in self.users.exclude(id=client.avatar.id):
-               if usr.mind is None:
-                  ## HACK: this prunes clients that exited badly
-                  self.users.remove(usr)
-               dfr = defer.maybeDeferred(usr.mind.userLeft, self, client, reason)
-               dfr.addErrback(self._ebUserCall, client=usr.mind)
-               calls.append(dfr)
-            ## cant return this from deferToThread, so there may be a race conditin if any callbacks are added to it
-            defer.DeferredList(calls).addCallback(cbUsersRemoved)
-         else:
-            #raise Exception('User not in channel.')
-            pass ## who cares
-      return threads.deferToThread(dbOps)
+      ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
+      ## I think this is related to the "cant create public chans" bug as well -- defertToThread seems bugged
+      return defer.maybeDeferred(dbOps).addCallback(cbNotify) ##need eb
 
    def iterusers(self):
       ## TODO: deferToThread
@@ -571,7 +572,7 @@ class _Channel(object):
          d = defer.maybeDeferred(clt.receive, sender, self, message)
          d.addErrback(self._ebUserCall, client=clt)
          receives.append(d)
-      defer.DeferredList(receives).addCallback(self._cbUserCall)
+      defer.DeferredList(receives).addCallback(self._cbUserCall) ##prunes stale users
       return defer.succeed(None)
 
 
@@ -580,16 +581,13 @@ class _Channel(object):
 class _User(object):
    implements(iwords.IUser)
 
-   # FIXME: these are not preserved in db
+   ## FIXME: these are not preserved in db
    realm = None # realm handles logins
 
    ## this gets wiped when the obj is constructed by a query
    #mind = None # 'mind' is really the IRCUser instance or 'client'
    ## so use this instead with a getter
    minds = {} # user id to client mapping
-
-   class Meta:
-      proxy = True
 
    @classmethod
    def getUser(cls, nick):
@@ -743,7 +741,9 @@ class PeerchatRealm(WordsRealm):
             raise Exception('Creation of public channels is disallowed.')
          return grp
 
-      return threads.deferToThread(dbCall)
+      ## XXX: deferToThread seems bugged: errbacks added after this return don't get registered!?
+      #return threads.deferToThread(dbCall)
+      return defer.maybeDeferred(dbCall)
 
 
 class PeerchatPortal(Portal):

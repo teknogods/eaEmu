@@ -1,6 +1,5 @@
 import random
 import base64
-import threading
 from datetime import datetime
 
 from twisted.internet import defer
@@ -8,7 +7,7 @@ from twisted.internet import threads
 
 from ..gamespy.cipher import *
 from ..util.password import *
-from ..util import aspects
+from ..util import aspects, synchronized
 from . import errors
 from .. import config
 
@@ -99,16 +98,16 @@ class _PersonaWrap:
 
 @aspects.Aspect(Stats)
 class _StatsWrap:
-   lock = threading.Lock()
    @classmethod
    def getStats(cls, name, chanName):
+      @synchronized
       def fetch():
          persona = db.Persona.objects.get(name__iexact=name)
          channel = db.Channel.objects.get(name__iexact=chanName)
-         cls.lock.acquire()
-         stats = cls.objects.get_or_create(persona=persona, channel=channel)[0]
-         cls.lock.release()
-      return threads.deferToThread(fetch)
+         return cls.objects.get_or_create(persona=persona, channel=channel)[0]
+      ## XXX: broken
+      #return threads.deferToThread(fetch)
+      return defer.maybeDeferred(fetch)
 
 def syncAccount(username):
    ## TODO: maybe grab this info from same database as the one in eaEmu.dj.settings?

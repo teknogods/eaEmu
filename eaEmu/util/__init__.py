@@ -1,4 +1,5 @@
 import logging
+import threading
 
 def getLogger(prefix, protocol=None, host=None, port=None):
    if protocol:
@@ -16,3 +17,28 @@ def hexdump(src, length=32):
       result.append( b"%04X   %-*s   %s" % (i, length*(digits + 1), hexa, text) )
    return b'\n'.join(result)
 
+class synchronized(object):
+   metaLock = threading.Lock()
+
+   def __init__(self, obj=None):
+      if obj:
+         with synchronized.metaLock:
+            if not hasattr(obj, '__lock'):
+               obj.__lock = threading.Lock()
+      self.obj = obj
+
+   def __call__(self, func):
+      if not self.obj:
+         ## no lock object was given
+         obj = func
+         with synchronized.metaLock:
+            if not hasattr(obj, '__lock'):
+               obj.__lock = threading.Lock()
+      else:
+         obj = self.obj
+
+      def syncedFunc(*args, **kw):
+         with obj.__lock:
+            return func(*args, **kw)
+
+      return syncedFunc
