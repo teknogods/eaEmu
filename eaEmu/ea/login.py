@@ -300,7 +300,7 @@ class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identi
       def cbUser(user):
          # dict:TXN=NuLogin,macAddr=$001bfcb369cb,nuid=xxxxxx,password=xxxxx,returnEncryptedInfo=1
          self.replyMap = {
-            'nuid': user.login,
+            'nuid': user.login_dirty,
             'userId': user.id,
             'profileId': user.id, # seems to be always the same as userId
             'lkey':self.server.session.key,
@@ -317,7 +317,7 @@ class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identi
             #self.replyMap['encryptedLoginInfo'] = 'Ciyvab0tregdVsBtboIpeChe4G6uzC1v5_-SIxmvSLJ82DtYgFUjObjCwJ2gbAnB4mmJn_A_J6tn0swNLggnaFOnewWkbq09MOpvpX-Eu19Ypu3s6gXxJ3CTLLkvB-9UKI6qh-nfrXHs3Ij9FBzMrQ..'
             self.replyMap['encryptedLoginInfo'] = 'Ciyvab0tregdVsBtboIpeChe4G6uzC1v5_-SIxmvSLKqzcqC65kVfFSAEe3lLoY8ZEGkTOwgFM8xRqUuwICLMyhYLqhtMx2UYCllK0EZUodWU5w3jv7gny_kWfGnA6cKbRtwKAriv2OdJmPGsPDdGQ..'
          else:
-            self.replyMap['displayName'] = user.login
+            self.replyMap['displayName'] = user.login_dirty
             self.replyMap['entitledGameFeatureWrappers'] = [{
                'gameFeatureId':6014,
                'status':0,
@@ -336,7 +336,8 @@ class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identi
             'errorCode' : err.value.id,
          }
          self.Reply()
-      dfr = self.server.session.Login(self.msg.nuid, self.msg.password)
+      username = self.msg.nuid.strip('"')
+      dfr = self.server.session.Login(username, self.msg.password)
       dfr.addCallbacks(cbUser, ebUser)
 
 class EaMsgHlr_NuGetPersonas(MessageHandler):
@@ -370,7 +371,9 @@ class EaMsgHlr_NuAddPersona(MessageHandler):
          }
          self.Reply()
 
-      dfr = self.server.session.user.addPersona(self.msg.map['name'])
+      ## FIXME: blanks result in 'name in use' error
+      name = self.msg.map['name'].strip('"')
+      dfr = self.server.session.user.addPersona(name)
       dfr.addCallbacks(cbPersona, ebPersona)
 
 class EaMsgHlr_NuLoginPersona(MessageHandler):
@@ -379,11 +382,12 @@ class EaMsgHlr_NuLoginPersona(MessageHandler):
       #'SUeWiB5BVHH_cJooCn4oOAAAKD0.' #only middle part is diff from one returned in NuLogin
       return self.msg.makeReply({
          'lkey':self.server.session.key,
-         'profileId':self.user.login,
-         'userId':self.user.login,
+         'profileId':self.user.login_dirty,
+         'userId':self.user.login_dirty,
       })
    def handle(self):
-      persona = Persona.objects.get(name=self.msg.map['name'])
+      name = self.msg.map['name'].strip('"')
+      persona = Persona.objects.get(name=name)
       self.user = persona.user
       # dunno if this is the best way of managing the selected login
       self.user.persona_set.update(selected=False)
@@ -430,7 +434,7 @@ class EaMsgHlr_GameSpyPreAuth(MessageHandler):
          #'ticket':'CCUNTxOjYkDHJuDB9h0fw/skLy+s9DUCol1LFKmjk7Rc6/suwmWbFsKXbdZ1uZoEoQo7jHwlW7ZVw5FidVhdX8Yaw==',
          ## HACK, TODO: use login name instead of ticket so that gpcm knows who we are:
          ## this is vulnerable to impersonation since we trust the gpcm login msg isnt spoofed
-         'ticket':self.server.session.user.login, ## this is sent as 'authtoken' to gpcm
+         'ticket':self.server.session.user.login_dirty, ## this is sent as 'authtoken' to gpcm
       })
 
    def handle(self):

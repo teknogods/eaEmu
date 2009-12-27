@@ -53,6 +53,15 @@ class _GameWrap:
 
 @aspects.Aspect(User)
 class _UserWrap:
+   def _get_login_dirty(self):
+      if ' ' in self.login:
+         return '"{0}"'.format(self.login)
+      else:
+         return self.login
+   def _set_login_dirty(self, value):
+      self.login = value.strip('"')
+   login_dirty = property(_get_login_dirty, _set_login_dirty)
+
    #TODO: obsolete, remove?
    @classmethod
    def GetUser(cls, **kw):
@@ -68,13 +77,18 @@ class _UserWrap:
       return self.__class__.objects.create(login=name, password=pwd)
 
    def addPersona(self, name):
+      name = name.strip('"')
       def add():
-         try:
-            return Persona.objects.create(user=self, name=name)
-         except Exception, ex: ## TODO make this an errback
-            ## errbacks are better than try catches in async calls because it allows the caller to chain on extra except-blocks
-            raise errors.NameTaken() ## TODO: find out what this is for mysql (sqlite3.IntegrityError) how to make generic?
-      return threads.deferToThread(add)
+         return Persona.objects.create(user=self, name=name)
+      def ebAdd(err):
+         err.trap(Exception)
+         if type(err.value).__name__ == 'IntegrityError': ## different namespaces depending on db type used
+            ##FIXME: this is raised when there are spaces in the persona? why???? works fine in eaemu_user table?!
+            raise errors.NameTaken()
+         else:
+            return err
+      #return threads.deferToThread(add)
+      return defer.maybeDeferred(add).addErrback(ebAdd)
 
    def getPersonas(self):
       #return [str(x.name) for x in Persona.objects.filter(user=self)]
@@ -88,6 +102,17 @@ class _UserWrap:
 
 @aspects.Aspect(Persona)
 class _PersonaWrap:
+   ''' not yet needed
+   def _get_name_dirty(self):
+      if ' ' in self.name:
+         return '"{0}"'.format(self.name)
+      else:
+         return self.name
+   def _set_name_dirty(self, value):
+      self.name = value.strip('"')
+   name_dirty = property(_get_name_dirty, _set_name_dirty)
+   '''
+
    @classmethod
    def getUser(cls, **kw):
       '''
@@ -109,14 +134,10 @@ class _StatsWrap:
       #return threads.deferToThread(fetch)
       return defer.maybeDeferred(fetch)
 
+## FIXME: this should be formalized into a singleton instance
+phpbb_db = ConnectionPool(**config['phpbb_db']['connection'])
+## TODO: maybe grab this info from same database as the one in eaEmu.dj.settings?
 def syncAccount(username):
-   ## TODO: maybe grab this info from same database as the one in eaEmu.dj.settings?
-   def openDbConn():
-      return ConnectionPool(**config['phpbb_db']['connection']) ## doesnt actually connect until query is run?
-
-   def cbConnOpen(db):
-      return db.runQuery('SELECT user_id, username, user_password, user_email FROM phpbb_users WHERE username_clean LIKE LOWER("{0}") or user_email LIKE LOWER("{0}")'.format(username))
-
    def ebRunQuery(err):
       print 'couldnt open connection to phpbb db -- {0}'.format(err.value)
       raise errors.BackendFail()
@@ -132,8 +153,9 @@ def syncAccount(username):
       user.save()
       return user
 
-   #dfr.setTimeout(5) ## FIXME: this doesnt work as expected
-   return deferToThread(openDbConn).addCallbacks(cbConnOpen).addCallbacks(cbRunQuery, ebRunQuery)
+   #dfr.setTimeout(5) ## FIXME: this doesnt work as expected. how to timeout a query??
+   return phpbb_db.runQuery('SELECT user_id, username, user_password, user_email FROM phpbb_users WHERE username_clean LIKE LOWER("{0}") or user_email LIKE LOWER("{0}")'.format(username)
+                            ).addCallbacks(cbRunQuery, ebRunQuery)
 
 @aspects.Aspect(LoginSession)
 class _LoginSession:
@@ -248,7 +270,9 @@ class _TheaterWrap:
       return self.sessionClass.objects.create(theater=self, intIp=ip, intPort=port, extIp=ip, extPort=port)
 
    def DeleteSession(self, ip, port):
-      return self.sessionClass.objects.get(extIp=ip, extPort=port).delete()
+      ## HACK: if the connection is lost early enough, there may be no session to delete...
+      for session in self.sessionClass.objects.filter(extIp=ip, extPort=port):
+         session.delete()
 
    def ConnectionEstablished(self, key, user):
       self.sessionClass.objects.get(key=key).update(user=user)

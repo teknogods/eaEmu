@@ -37,7 +37,7 @@ class Comrade(LoginServer):
 
       #HACK,  TODO: extract info from real authtoken, once i can decode it
       # for now, find by looking at pseudo-authToken
-      self.user = user = db.User.objects.get(login=msg.authtoken)
+      self.user = user = db.User.objects.get(login=msg.authtoken.strip('"'))
       persona = user.getPersona()
 
       #persona = db.Persona(name='Jackalus', user=user)
