@@ -100,7 +100,7 @@ class _PersonaWrap:
 class _StatsWrap:
    @classmethod
    def getStats(cls, name, chanName):
-      @synchronized
+      #@synchronized()
       def fetch():
          persona = db.Persona.objects.get(name__iexact=name)
          channel = db.Channel.objects.get(name__iexact=chanName)
