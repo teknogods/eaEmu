@@ -154,6 +154,7 @@ class _LoginSession:
       def cbSync(user):
          self.user = user
          ## HACK? delete any stale sessions before saving
+         print('had to delete pre-existing sessions:', LoginSession.objects.filter(user=self.user).values())
          for e in LoginSession.objects.filter(user=self.user):
             e.delete()
          self.save()
@@ -269,3 +270,15 @@ class _TheaterWrap:
 ##HACK: clean login sessions at startup
 for sess in LoginSession.objects.all():
    sess.delete()
+
+## clear out static chans at startup
+## TODO: move or redesign this
+## maybe at Channel init build grp.users out of grp.clients?
+## that is, prune bad clients during __init__ rather that just at start?
+## i dont think this is best, it promotes bad accounting...
+for chan in Channel.objects.all():
+   chan.users.clear()
+## clear stats too so that they don't get duped on new joins
+for stats in Stats.objects.all():
+   stats.delete()
+

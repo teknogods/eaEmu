@@ -488,6 +488,10 @@ class _Channel(object):
       ## done enough (PART 1; JOIN 1 causes this). The proper thing to do is to use the same lock for
       ## add and remove per user. This is difficult because the lock can't be persisted in the db and
       ## I don't feel like maintaining anothe lookup dict is a good solution.
+      ## FIXME: I'm pretty sure the decorator here does nothing until I enforce uniqueness in the Stats table with:
+      ##  class Meta:
+      ##    unique_together = (('channel_id', 'user_id'),)
+      ## this is probably because of bad db design :P
       @transaction.commit_on_success
       def dbOps():
          if client.avatar not in self.users.all():
@@ -866,13 +870,4 @@ class PeerchatEncryption(object):
       self.doCrypt = True ## encrypt traffic henceforth
       yield aspects.proceed
 
-
-## clear out static chans at startup
-## TODO: move or redesign this
-## maybe at Channel init build grp.users out of grp.clients?
-for chan in Channel.objects.all():
-   chan.users.clear()
-## clear stats too so that they don't get duped on new joins
-for stats in Stats.objects.all():
-   stats.delete()
 

@@ -328,6 +328,7 @@ class EaMsgHlr_NuLogin(MessageHandler): # TODO this and mercs2 are almost identi
          self.Reply()
 
       def ebUser(err):
+         self.server.session.delete()
          err.trap(errors.EaError)
          self.replyMap = {
             'localizedMessage' : '"{0}"'.format(err.value.text),
