@@ -20,7 +20,7 @@ from twisted.internet.tcp import Server
 from .db import *
 from .cipher import *
 from .. import util
-from ..util import aspects
+from ..util import aspects, synchronized
 from ..util.timer import KeepaliveService
 
 ## FIXME: this is in here because it's coupled with User
@@ -488,7 +488,8 @@ class _Channel(object):
       ##  class Meta:
       ##    unique_together = (('channel_id', 'user_id'),)
       ## this is probably because of bad db design :P
-      #@transaction.commit_on_success
+      @transaction.commit_on_success
+      @synchronized(Channel)
       def dbOps():
          if client.avatar in self.users.all():
             raise Exception('User already in channel.') ##FIXME: this is bad!!!!!! user will lock up
@@ -503,9 +504,10 @@ class _Channel(object):
          if self.name.lower().startswith('gsp') and self.users.count() == 1:
             ## first in private chan, promote to op
             client.avatar.setChanMode(self, '+o')
-         ## notify other clients in this group
-         return self.users.exclude(id=client.avatar.id)
+
          #transaction.commit()
+         ## the .all() here may be critically important in avoiding race conditions
+         return self.users.exclude(id=client.avatar.id).all()
 
       def cbNotify(users):
          calls = []
@@ -522,9 +524,9 @@ class _Channel(object):
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
-      #@synchronized(Channel)
-      #@transaction.commit_on_success
+      @transaction.commit_on_success
       #@transaction.commit_manually
+      @synchronized(Channel)
       def dbOps():
          if client.avatar not in self.users.all():
             #raise Exception('User not in channel.')
@@ -539,7 +541,8 @@ class _Channel(object):
          self.stats_set.get(persona__user=client.avatar).delete()
 
          #transaction.commit()
-         return self.users.exclude(id=client.avatar.id)
+         ## the .all() here may be critically important in avoiding race conditions
+         return self.users.exclude(id=client.avatar.id).all()
 
       def cbNotify(users):
          def cbUsersRemoved(results):
