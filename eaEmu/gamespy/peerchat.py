@@ -458,7 +458,6 @@ class _Channel(object):
    implements(iwords.IGroup)
 
    def __init__(self, *args, **kw):
-      #Channel.__init__(self, *args, **kw)
       yield aspects.proceed
 
       ## FIXME: remove this HACK or at least find better way to check if a new chan
@@ -505,9 +504,9 @@ class _Channel(object):
             ## first in private chan, promote to op
             client.avatar.setChanMode(self, '+o')
 
-         #transaction.commit()
-         ## the .all() here may be critically important in avoiding race conditions
-         return self.users.exclude(id=client.avatar.id).all()
+         ## the .save() here may be critically important in avoiding race conditions
+         self.save()
+         return self.users.exclude(id=client.avatar.id)
 
       def cbNotify(users):
          calls = []
@@ -525,24 +524,20 @@ class _Channel(object):
       assert reason is None or isinstance(reason, unicode)
 
       @transaction.commit_on_success
-      #@transaction.commit_manually
       @synchronized(Channel)
       def dbOps():
          if client.avatar not in self.users.all():
             #raise Exception('User not in channel.')
             return self.users.exclude(id=client.avatar.id) ## who cares
          self.users.remove(client.avatar)
-         ## FIXME: there should only ever be 1 stats obj per user-channel combo. Fix this elsewhere. Like at creation.
-         #for obj in self.stats_set.filter(persona__user=client.avatar):
-            #obj.delete()
          ## delete corresponding stats obj
          ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
          ## clients and they do a GETCKEY on that user.
          self.stats_set.get(persona__user=client.avatar).delete()
 
-         #transaction.commit()
-         ## the .all() here may be critically important in avoiding race conditions
-         return self.users.exclude(id=client.avatar.id).all()
+         ## the .save() here may be critically important in avoiding race conditions
+         self.save()
+         return self.users.exclude(id=client.avatar.id)
 
       def cbNotify(users):
          def cbUsersRemoved(results):
@@ -559,6 +554,7 @@ class _Channel(object):
 
       ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
       ## I think this is related to the "cant create public chans" bug as well -- defertToThread seems bugged
+      #return defer.maybeDeferred(dbOps).addCallback(cbWaitTilGone).addCallback(cbNotify) ##need eb
       return defer.maybeDeferred(dbOps).addCallback(cbNotify) ##need eb
 
    def iterusers(self):
