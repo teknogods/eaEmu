@@ -61,7 +61,7 @@ class Peerchat(IRCUser, object):
 
       ## some HACKS for IRCUser compat
       self.name = '*' ## need this since user hasn't logged in yet
-      self.password = '' ## FIXME, TODO: remove once auth process fixed
+      self.password = '' ## FIXME, TODO: remove once auth process fixed (used by irc_NICK currently to login)
       self.hostname = 's'
 
       ## TODO actually require a PONG response rather than
@@ -786,6 +786,9 @@ class CipherProxy:
       #patches follow
       return self.clientEgress.crypt(unenc)
 
+## TODO: merge these with proxyPeerchat service
+## I'm leaving them here for now in case i need to quickly
+## capture some traffic.
 class ProxyPeerchatClient(ProxyClient):
    cipher = None #a little HACKy
    def dataReceived(self, data):

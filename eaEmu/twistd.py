@@ -7,6 +7,13 @@ from twisted.application.service import IServiceMaker
 from twisted.application import internet
 from twisted.python.usage import portCoerce
 
+def loadConfig(filePath):
+   with open(filePath) as configFile:
+      import eaEmu
+      eaEmu.config = yaml.load(configFile.read())
+      return eaEmu.config
+
+
 ## TODO: migrate to a eaEmu service that uses flags or config.yml to determine what services run
 ## The service should be put together based on what's in the tap section of config.yml
 ## Or maybe just select 'ra3' or 'mow' or 'mercs2' in the config and then start up that service
@@ -27,17 +34,35 @@ class EaEmuServiceFactory(object):
    options = EaEmuOptions
 
    def makeService(self, options):
-      with open(options['config']) as configFile:
-         import eaEmu
-         config = eaEmu.config = yaml.load(configFile.read())
+      config = loadConfig(options['config'])
       try:
          options.update(dict((k, v) for k, v in config['tap'][self.tapname].iteritems() if options.get(k, None) is None))
       except (KeyError, AttributeError), ex:
          pass ## section in config file was not found
       if None in options.values():
          raise Exception('Missing an essential parameter. Add it to config file or commandline.')
-      options
       exec 'from {0} import Service'.format(options['module']) in globals()
       return Service(**options)
 
 eaEmu = EaEmuServiceFactory()
+
+class PeerchatProxyOptions(usage.Options):
+   optParameters = [
+      ['port', 'p', 6667, 'The port to run the proxy on.', portCoerce],
+      ['host', 'h', 'tgo.teknogods.com', 'The hostname of the peerchat server to connect to.'],
+      ['game', 'g', 'redalert3pc', 'The game id of the peerchat server.'],
+   ]
+
+class PeerchatProxyServiceFactory(object):
+   implements(IServiceMaker, IPlugin)
+   tapname = 'peerchatProxy'
+   description = 'Proxy server that allows regular IRC clients to connect to peerchat servers.'
+   options = PeerchatProxyOptions
+
+   def makeService(self, options):
+      config = loadConfig('config.yml')
+      from eaEmu.gamespy.peerchatProxy import Service
+      return Service(**options)
+
+
+peerchatProxy = PeerchatProxyServiceFactory()
