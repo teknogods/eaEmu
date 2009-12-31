@@ -488,7 +488,7 @@ class _Channel(object):
       ##  class Meta:
       ##    unique_together = (('channel_id', 'user_id'),)
       ## this is probably because of bad db design :P
-      @transaction.commit_on_success
+      @transaction.commit_manually
       @synchronized(Channel)
       def dbOps():
          ## the list() calls here are critically important in avoiding race conditions;
@@ -508,6 +508,7 @@ class _Channel(object):
             ## first in private chan, promote to op
             client.avatar.setChanMode(self, '+o')
 
+         transaction.commit()
          return list(self.users.exclude(id=client.avatar.id))
 
       def cbNotify(users):
@@ -525,10 +526,12 @@ class _Channel(object):
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
-      @transaction.commit_on_success
+      @transaction.commit_manually
       @synchronized(Channel)
       def dbOps():
-         ## it forces evalutation of the list rather than querying the db as the iteration proceeds
+         ## the list() calls here are critically important in avoiding race conditions;
+         ## they force evalutation of the list rather than querying the db as the iterations proceed
+
          if client.avatar not in list(self.users.all()):
             raise Exception('User not in channel.')
             #return list(self.users.exclude(id=client.avatar.id))
@@ -538,6 +541,7 @@ class _Channel(object):
          ## clients and they do a GETCKEY on that user.
          self.stats_set.get(persona__user=client.avatar).delete()
 
+         transaction.commit()
          return list(self.users.exclude(id=client.avatar.id))
 
       def cbNotify(users):
