@@ -3,6 +3,8 @@ import logging
 import re
 
 from django.db import transaction
+from django.db.models import signals
+
 from twisted.words.protocols import irc
 from twisted.words.protocols.irc import lowQuote
 from twisted.internet.protocol import ServerFactory
@@ -23,35 +25,8 @@ from .. import util
 from ..util import aspects, synchronized
 from ..util.timer import KeepaliveService
 
-## FIXME: this is in here because it's coupled with User
-from ..util import aspects
-@aspects.Aspect(Stats)
-class _StatsWrap:
-   def dumpFields(self, fields, withNames=False):
-      #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
-      fieldVals = {}
-      for fld in fields:
-         if fld == 'username':
-            ## this is pretty HACKy, but needed cuz i dont want to do a db query for the User version
-            ## of this object
-            fieldVals[fld] = User.__dict__['getIrcUserString'](self.persona.user)
-         elif fld == 'b_arenaTeamID':
-            val = getattr(self, fld)
-            fieldVals[fld] = val and val.id or 0 # use zero if field is null (very rare case)
-         else:
-            fieldVals[fld] =getattr(self, fld, None) or '' ## None's become ''
-
-      return ':\\' + '\\'.join(sum(
-                                   [[k, str(fieldVals[k])] for k in fields] if withNames else
-                                   [[str(fieldVals[k])] for k in fields],
-                                   []
-      ))
-
-
-
 ## TODO: all db access should go into Channel and User
 ## They should also all use Deferreds
-
 
 class Peerchat(IRCUser, object):
    def connectionMade(self):
@@ -252,11 +227,15 @@ class Peerchat(IRCUser, object):
       if nick == '*':
          pass ## TODO: ever happen? what's proper behavior?
 
+      if nick.startswith('#'): ## only irc clients do this
+         return
+
       def cbGotUser(user):
          self.sendMessage(irc.RPL_WHOREPLY, '*', user.getIrcUserString(), '*', self.hostname, nick, 'H', ':0 {0}'.format(self.cdKeyHash))
          self.sendMessage(irc.RPL_ENDOFWHO, nick, ':End of WHO list')
 
-      threads.deferToThread(User.getUser, nick).addCallback(cbGotUser)
+      #threads.deferToThread(User.getUser, nick).addCallback(cbGotUser)
+      defer.maybeDeferred(User.getUser, nick).addCallback(cbGotUser)
 
    def irc_GETCKEY(self, prefix, params):
       chan, nick, rId, zero, fields = params
@@ -316,7 +295,8 @@ class Peerchat(IRCUser, object):
          def save():
             stats.save()
             return stats
-         return threads.deferToThread(save)
+         #return threads.deferToThread(save)
+         return defer.maybeDeferred(save)
 
       def ebRespond(err):
          print('Error in sending response: probably either stats or group could not be retrieved')
@@ -470,6 +450,7 @@ class _Channel(object):
       ## these lists unfortunately have to be maintained separately :/
       ## TODO: handle this tracking better
 
+
    ## used by methods that rely on deferredlists to do something to all users
    def _ebUserCall(self, err, client):
       return failure.Failure(Exception(client, err))
@@ -482,18 +463,34 @@ class _Channel(object):
             clientuser, err = result.value
             self.remove(clientuser, err.getErrorMessage())
 
+
+   ## FIXME: I'm pretty sure the decorator here does nothing until I enforce uniqueness in the Stats table with:
+   ##  class Meta:
+   ##    unique_together = (('channel_id', 'user_id'),)
+   ## this is probably because of bad db design :P
+   @transaction.commit_on_success
+   @synchronized(Channel)
+   def doDbOps(self, func):
+      done = defer.Deferred()
+      ## XXX: this is still flawed, because if a channel is saved somewhere outside of these two
+      ## methods (which it currently isn't), the race condition is back again.
+      def sigSaved(**kw):
+         if kw['instance'] is self:
+            #print(kw)
+            signals.post_save.disconnect(sigSaved, sender=Channel)
+            done.callback(kw)
+      ## XXX: i'm really after when channel.users is saved, but this will have to do...
+      signals.post_save.connect(sigSaved, sender=Channel)
+
+      func()
+
+      self.save()
+      return done
+
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
-      ## FIXME: I'm pretty sure the decorator here does nothing until I enforce uniqueness in the Stats table with:
-      ##  class Meta:
-      ##    unique_together = (('channel_id', 'user_id'),)
-      ## this is probably because of bad db design :P
-      @transaction.commit_manually
-      @synchronized(Channel)
-      def dbOps():
-         ## the list() calls here are critically important in avoiding race conditions;
-         ## they force evalutation of the list rather than querying the db as the iterations proceed
 
+      def dbOps():
          if client.avatar in list(self.users.all()):
             raise Exception('User already in channel.') ##FIXME: this is bad!!!!!! user will lock up
 
@@ -508,10 +505,8 @@ class _Channel(object):
             ## first in private chan, promote to op
             client.avatar.setChanMode(self, '+o')
 
-         transaction.commit()
-         return list(self.users.exclude(id=client.avatar.id))
-
-      def cbNotify(users):
+      def cbNotify(result):
+         users = self.users.exclude(id=client.avatar.id)
          calls = []
          for usr in users:
             dfr = defer.maybeDeferred(usr.mind.userJoined, self, client)
@@ -521,30 +516,25 @@ class _Channel(object):
 
       ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
       ## I think this is related to the "cant create public chans" bug as well -- defertToThread seems bugged
-      return defer.maybeDeferred(dbOps).addCallback(cbNotify) ##need eb
+      return defer.maybeDeferred(self.doDbOps, dbOps).addCallback(cbNotify) ##need eb
 
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
-      @transaction.commit_manually
-      @synchronized(Channel)
       def dbOps():
-         ## the list() calls here are critically important in avoiding race conditions;
-         ## they force evalutation of the list rather than querying the db as the iterations proceed
-
          if client.avatar not in list(self.users.all()):
-            raise Exception('User not in channel.')
-            #return list(self.users.exclude(id=client.avatar.id))
+            ## this is legitly possible. an irc client can send multiple parts without first joining
+            ## As long as there are no race conditions, we can just return.
+            #raise Exception('User not in channel.')
+            return
          self.users.remove(client.avatar)
          ## delete corresponding stats obj
          ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
          ## clients and they do a GETCKEY on that user.
          self.stats_set.get(persona__user=client.avatar).delete()
 
-         transaction.commit()
-         return list(self.users.exclude(id=client.avatar.id))
-
-      def cbNotify(users):
+      def cbNotify(result):
+         users = self.users.exclude(id=client.avatar.id)
          def cbUsersRemoved(results):
             if self.name.lower().startswith('gsp') and self.users.count() == 0:
                self.delete()
@@ -559,11 +549,11 @@ class _Channel(object):
 
       ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
       ## I think this is related to the "cant create public chans" bug as well -- deferToThread seems bugged
-      return defer.maybeDeferred(dbOps).addCallback(cbNotify) ##need eb
+      return defer.maybeDeferred(self.doDbOps, dbOps).addCallback(cbNotify) ##need eb
 
    def iterusers(self):
       ## TODO: deferToThread
-      return iter(User.objects.get(id=user.id) for user in self.users.all())
+      return self.users.all()
 
    def receive(self, sender, recipient, message):
       assert recipient is self
@@ -640,7 +630,7 @@ class _User(object):
       # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
       try:
          return '{0}|{1}'.format(IpEncode.encode(self.loginsession.extIp), self.getPersona().id)
-      except self.DoesNotExist, ex:
+      except LoginSession.DoesNotExist, ex:
          print('WARNING: could not find loginsession for user with login={0}, id={1}'.format(self.login, self.id))
          return '{0}|{1}'.format(IpEncode.encode('0.0.0.0'), self.getPersona().id)
 
@@ -703,7 +693,8 @@ class PeerchatRealm(WordsRealm):
 
    def lookupUser(self, name):
       assert isinstance(name, unicode)
-      return threads.deferToThread(User.getUser, name)
+      #return threads.deferToThread(User.getUser, name)
+      return defer.maybeDeferred(User.getUser, name)
 
    ## getGroup in parent class will call createGroup
    createGroupOnRequest = True
@@ -729,7 +720,8 @@ class PeerchatRealm(WordsRealm):
             grp = Channel.objects.get(name__iexact=name)
          return grp
 
-      return threads.deferToThread(dbCall)
+      #return threads.deferToThread(dbCall)
+      return defer.maybeDeferred(dbCall)
 
    def createGroup(self, name):
       assert isinstance(name, unicode)

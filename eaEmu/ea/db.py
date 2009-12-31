@@ -134,6 +134,24 @@ class _StatsWrap:
       #return threads.deferToThread(fetch)
       return defer.maybeDeferred(fetch)
 
+   username = property(lambda self: self.persona.user.getIrcUserString())
+
+   def dumpFields(self, fields, withNames=False):
+      #response = ''.join('\\{0}'.format(getattr(user.stats, x)) for x in fields) # only possible with getter-methods
+      fieldVals = {}
+      for fld in fields:
+         if fld == 'b_arenaTeamID': ## FIXME?
+            val = getattr(self, fld)
+            fieldVals[fld] = val and val.id or 0 # use zero if field is null (very rare case)
+         else:
+            fieldVals[fld] =getattr(self, fld, None) or '' ## None's become ''
+
+      return ':\\' + '\\'.join(sum(
+                                   [[k, str(fieldVals[k])] for k in fields] if withNames else
+                                   [[str(fieldVals[k])] for k in fields],
+                                   []
+      ))
+
 ## FIXME: this should be formalized into a singleton instance
 phpbb_db = ConnectionPool(**config['phpbb_db']['connection'])
 ## TODO: maybe grab this info from same database as the one in eaEmu.dj.settings?
