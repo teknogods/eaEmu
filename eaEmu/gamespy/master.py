@@ -75,7 +75,7 @@ class HeartbeatMaster(DatagramProtocol):
             )
          ## sometimes, messages come with just ip update info and no groupid or hostname. I'm assuming the 4byte id is used to identify the session.
          if 'groupid' not in info:
-            #self.log.debug('weird msg from {0}:{1} -- {2}'.format(host, port, repr(data)))
+            self.log.debug('weird msg from {0}:{1} clientid={2} data={3}'.format(host, port, clientId, repr(data)))
             session = db.MasterGameSession.objects.get(clientId=clientId)
          else:
             try:
