@@ -114,7 +114,8 @@ class Peerchat(IRCUser, object):
    def irc_USER(self, prefix, params):
       #'XflsaqOa9X|165580976' is encodedIp|GSProfileId aka persona, '127.0.0.1', 'peerchat.gamespy.com', 'a69b3a7a0837fdcd763fdeb0456e77cb' is cdkey
       user, ip, host, self.cdKeyHash = params
-      encIp, profileId = user.split('|')
+      if '|' in user: ## should be true unless client is using a regular IRC client
+         encIp, profileId = user.split('|')
 
       #self.avatar = User.objects.get(id=Persona.objects.get(id=profileId).user.id) #HACKy XXX # TODO use deferred
       #assert self.avatar.getIrcUserString() == user
@@ -490,7 +491,10 @@ class _Channel(object):
       @transaction.commit_on_success
       @synchronized(Channel)
       def dbOps():
-         if client.avatar in self.users.all():
+         ## the list() calls here are critically important in avoiding race conditions;
+         ## they force evalutation of the list rather than querying the db as the iterations proceed
+
+         if client.avatar in list(self.users.all()):
             raise Exception('User already in channel.') ##FIXME: this is bad!!!!!! user will lock up
 
          ## set mode for user in this channel
@@ -504,9 +508,7 @@ class _Channel(object):
             ## first in private chan, promote to op
             client.avatar.setChanMode(self, '+o')
 
-         ## the .save() here may be critically important in avoiding race conditions
-         self.save()
-         return self.users.exclude(id=client.avatar.id)
+         return list(self.users.exclude(id=client.avatar.id))
 
       def cbNotify(users):
          calls = []
@@ -526,18 +528,17 @@ class _Channel(object):
       @transaction.commit_on_success
       @synchronized(Channel)
       def dbOps():
-         if client.avatar not in self.users.all():
-            #raise Exception('User not in channel.')
-            return self.users.exclude(id=client.avatar.id) ## who cares
+         ## it forces evalutation of the list rather than querying the db as the iteration proceeds
+         if client.avatar not in list(self.users.all()):
+            raise Exception('User not in channel.')
+            #return list(self.users.exclude(id=client.avatar.id))
          self.users.remove(client.avatar)
          ## delete corresponding stats obj
          ## TODO: there may be a race condition here if this gets deleted before the PART is sent to other
          ## clients and they do a GETCKEY on that user.
          self.stats_set.get(persona__user=client.avatar).delete()
 
-         ## the .save() here may be critically important in avoiding race conditions
-         self.save()
-         return self.users.exclude(id=client.avatar.id)
+         return list(self.users.exclude(id=client.avatar.id))
 
       def cbNotify(users):
          def cbUsersRemoved(results):
@@ -553,8 +554,7 @@ class _Channel(object):
          return defer.DeferredList(calls).addCallback(cbUsersRemoved)
 
       ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
-      ## I think this is related to the "cant create public chans" bug as well -- defertToThread seems bugged
-      #return defer.maybeDeferred(dbOps).addCallback(cbWaitTilGone).addCallback(cbNotify) ##need eb
+      ## I think this is related to the "cant create public chans" bug as well -- deferToThread seems bugged
       return defer.maybeDeferred(dbOps).addCallback(cbNotify) ##need eb
 
    def iterusers(self):
