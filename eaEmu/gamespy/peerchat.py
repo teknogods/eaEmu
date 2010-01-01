@@ -274,14 +274,15 @@ class Peerchat(IRCUser, object):
       self.realm.lookupGroup(grp).addCallbacks(cbGroup, ebGroup)
 
    def irc_SETCKEY(self, prefix, params):
+      params = [unicode(x) for x in params]
       chan, nick, fields = params
-      assert nick == self.avatar.name
+      assert nick == self.avatar.getPersona().name
       tokens  = fields.split('\\')[1:]
       changes = dict(zip(tokens[::2], tokens[1::2]))
       changes = dict((k, v if v != '' else None) for k, v in changes.iteritems()) ## change blanks to nulls
       fields = tokens[::2] ## define this to maintain ordering
 
-      grp = unicode(chan[1:])
+      grp = chan[1:]
 
       def ebGroup(err):
          err.trap(ewords.NoSuchGroup)
@@ -587,6 +588,7 @@ class _User(object):
       return User.objects.get(id=Persona.objects.get(name__iexact=nick).user.id)
 
    ## NOTE that we cant use this field in queries!
+   ## XXX: using this is misleading. really, user.login should be user.name, so this is bad... DEPRECATE.
    def _get_name(self):
       return self.getPersona().name
    name = property(_get_name)
