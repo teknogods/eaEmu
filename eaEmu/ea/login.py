@@ -18,7 +18,7 @@ from twisted.internet.ssl import DefaultOpenSSLContextFactory
 from twisted.internet.defer import Deferred
 
 from .message import Message, MessageFactory
-from .db import *
+from ..db import *
 from .. import util
 from ..util.fwdserver import *
 from ..util.timer import KeepaliveService

@@ -7,7 +7,7 @@ from twisted.application.service import MultiService
 from ... import gamespy
 from ... import util
 from ..login import *
-from ..db import *
+from ...db import *
 
 gameId = 'redalert3pc'
 

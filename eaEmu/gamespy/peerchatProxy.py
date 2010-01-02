@@ -4,7 +4,7 @@ from twisted.protocols.portforward import *
 from twisted.application.service import MultiService
 from twisted.application.internet import TCPServer
 
-from .db import Game
+from ..db import Game
 from .peerchat import *
 
 class PeerchatProxyClient(ProxyClient):

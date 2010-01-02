@@ -5,7 +5,7 @@ from twisted.internet.protocol import ServerFactory
 
 from .login import LoginServer
 from .message import MessageFactory
-from . import db
+from .. import db
 from . import cipher
 from .. import util
 

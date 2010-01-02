@@ -42,3 +42,52 @@ class synchronized(object):
             return func(*args, **kw)
 
       return syncedFunc
+
+class SingletonMeta(type):
+   def __new__(klass, name, bases, dikt):
+      origNew = klass.__new__
+      def new(klass, *args):
+         if not hasattr(klass, '__singleton'):
+            print ('no attr')
+            klass.__singleton = origNew(klass, name, bases, dikt)
+         return klass.__singleton
+      dikt['__new__'] = new
+      return type.__new__(klass, name, bases, dikt)
+
+## class decorator
+def Singleton(clsToDecorate):
+   #class Singleton(clsToDecorate, object):
+   def __new__(klass, *args):
+      if not hasattr(klass, '__singleton'):
+         print ('no attr')
+         klass.__singleton = super(type(klass), klass).__new__(klass, *args)
+      return klass.__singleton
+   #return Singleton
+   clsToDecorate.__new__ = __new__
+   return clsToDecorate
+
+from .aspects import *
+
+
+def Singleton(target):
+   def newWrap(klass, *args):
+      if not hasattr(klass, '__singleton'):
+         print ('no attr')
+         klass.__singleton = super(klass.__class__, klass).__new__(klass, *args)
+      return klass.__singleton
+   print('ohai')
+   from .aspects import with_wrap
+   aspects.with_wrap(newWrap, target)
+   return target
+
+def Singleton(target):
+   if not hasattr(target, '__new__'):
+      target.__new__ = lambda *a, **k: None
+   def newWrap(klass, *args):
+      print('hi')
+      if not hasattr(target, '__singleton'):
+         print ('no attr')
+         target.__singleton = yield aspects.proceed
+      yield aspects.return_stop(target.__singleton)
+   aspects.with_wrap(newWrap, target.__new__)
+   return target

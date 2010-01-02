@@ -2,7 +2,6 @@ __all__ = [
    'auth',
    'cipher',
    'gpcm',
-   'db',
    'login',
    'master',
    'message',

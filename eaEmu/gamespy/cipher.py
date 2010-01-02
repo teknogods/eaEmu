@@ -7,12 +7,12 @@ import base64
 from socket import inet_aton, inet_ntoa
 from array import array
 
-from . import db
+from ..db import *
 from .. import util
 
 class CipherFactory:
    def __init__(self, gameName):
-      self.gameKey = db.Game.objects.get(name=gameName).key
+      self.gameKey = Game.objects.get(name=gameName).key
 
    def getMasterCipher(self, validate):
       return EncTypeX(self.gameKey, validate)

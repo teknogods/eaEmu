@@ -3,7 +3,6 @@ import logging
 import re
 
 from django.db import transaction
-from django.db.models import signals
 
 from twisted.words.protocols import irc
 from twisted.words.protocols.irc import lowQuote
@@ -19,10 +18,10 @@ from twisted.words import iwords
 from twisted.python import failure
 from twisted.internet.tcp import Server
 
-from .db import *
+from ..db import *
 from .cipher import *
 from .. import util
-from ..util import aspects, synchronized
+from ..util import aspects
 from ..util.timer import KeepaliveService
 
 ## TODO: all db access should go into Channel and User
@@ -426,6 +425,7 @@ class PeerchatFactory(IRCFactory):
       realm = PeerchatRealm()
       IRCFactory.__init__(self, realm, PeerchatPortal(realm))
 
+
 ## INTEGRAGTION TODO:
 ## follow naming, callback convention, db abstraction
 ## move all db stuff to Channel and User
@@ -464,33 +464,15 @@ class _Channel(object):
             clientuser, err = result.value
             self.remove(clientuser, err.getErrorMessage())
 
-
-   ## FIXME: I'm pretty sure the decorator here does nothing until I enforce uniqueness in the Stats table with:
-   ##  class Meta:
-   ##    unique_together = (('channel_id', 'user_id'),)
-   ## this is probably because of bad db design :P
-   @transaction.commit_on_success
-   @synchronized(Channel)
-   def doDbOps(self, func):
-      done = defer.Deferred()
-      ## XXX: this is still flawed, because if a channel is saved somewhere outside of these two
-      ## methods (which it currently isn't), the race condition is back again.
-      def sigSaved(**kw):
-         if kw['instance'] is self:
-            #print(kw)
-            signals.post_save.disconnect(sigSaved, sender=Channel)
-            done.callback(kw)
-      ## XXX: i'm really after when channel.users is saved, but this will have to do...
-      signals.post_save.connect(sigSaved, sender=Channel)
-
-      func()
-
-      self.save()
-      return done
-
    def add(self, client):
       assert iwords.IChatClient.providedBy(client), "%r is not a chat client" % (client,)
 
+      ## FIXME: I'm pretty sure the decorator here does nothing until I enforce uniqueness in the Stats table with:
+      ##  class Meta:
+      ##    unique_together = (('channel_id', 'user_id'),)
+      ## this is probably because of bad db design :P
+      @djangoAsync(self)
+      @transaction.commit_on_success
       def dbOps():
          if client.avatar in list(self.users.all()):
             raise Exception('User already in channel.') ##FIXME: this is bad!!!!!! user will lock up
@@ -515,13 +497,13 @@ class _Channel(object):
             calls.append(dfr)
          return defer.DeferredList(calls).addCallback(self._cbUserCall) ##prunes stale users
 
-      ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
-      ## I think this is related to the "cant create public chans" bug as well -- defertToThread seems bugged
-      return defer.maybeDeferred(self.doDbOps, dbOps).addCallback(cbNotify) ##need eb
+      return dbOps().addCallback(cbNotify) ##need eb
 
    def remove(self, client, reason=None):
       assert reason is None or isinstance(reason, unicode)
 
+      @djangoAsync(self)
+      @transaction.commit_on_success
       def dbOps():
          if client.avatar not in list(self.users.all()):
             ## this is legitly possible. an irc client can send multiple parts without first joining
@@ -550,7 +532,7 @@ class _Channel(object):
 
       ## XXX: can't seem to get deferToThread() to obey mutex locks in dbOps
       ## I think this is related to the "cant create public chans" bug as well -- deferToThread seems bugged
-      return defer.maybeDeferred(self.doDbOps, dbOps).addCallback(cbNotify) ##need eb
+      return dbOps().addCallback(cbNotify) ##need eb
 
    def iterusers(self):
       ## TODO: deferToThread

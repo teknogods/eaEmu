@@ -5,22 +5,21 @@ from datetime import datetime
 from twisted.internet import defer
 from twisted.internet import threads
 
-from ..gamespy.cipher import *
-from ..util.password import *
-from ..util import aspects, synchronized
-from . import errors
-from .. import config
+from .gamespy.cipher import *
+from .util.password import *
+from .util import aspects
+from .ea import errors
+from . import config
 
 try:
    import django.conf
-   import django.db.models
-   from django.db.models import Q
    if not django.conf.settings.configured:
       django.conf.settings.configure(**config['django'])
-   from ..models import *
+   from django.db.models import Q, signals
+   from .models import *
 except Exception, e:
    print 'Exception while importing django modules:', e
-   # generate dummy classes here so we can at least load up
+   ## generate dummy classes here so we can at least load up
    import new
    def makeMod(modname):
       for i in reversed(range(len(modname.split('.')))):
@@ -44,15 +43,23 @@ except Exception, e:
 #   name = ''
 
 @aspects.Aspect(GameSession)
-class _GameWrap:
+class _GameSessionAspect(object):
    def Join(self, session): # TODO?
       # get hosting user's info and broker the connection
       pass
    def Leave(self, session):
       pass
 
+@aspects.Aspect(Game)
+class _GameAspect(object):
+   # to find gamekey, look for gameid in memory, like 'menofwarpcd' ASCII
+   # gamekey is usually nearby, <1k away
+   @classmethod
+   def getKey(cls, gameName):
+      return str(cls.objects.get(name=gameName).key)
+
 @aspects.Aspect(User)
-class _UserWrap:
+class _UserAspect:
    def _get_login_dirty(self):
       if ' ' in self.login:
          return '"{0}"'.format(self.login)
@@ -100,8 +107,42 @@ class _UserWrap:
       # TODO: find better way to manage the active/selected persona. Account could get in a bad state this way (2 active, get()s fail)
       return self.persona_set.get(selected=True)
 
+   def _get_umode(self):
+      info = self.userircinfo_set.get(channel=None)
+      return info.mode
+
+   def _set_umode(self, value):
+      #mode = group.mode.split(' ')[0].strip('+-')
+      info = self.userircinfo_set.get(channel=None)
+      info.mode = modifyMode(info.mode, value)
+      info.save() ## shouldn't, but far away so do it
+
+   umode = property(_get_umode, _set_umode)
+
+   def getChanMode(self, channel):
+      info = self.userircinfo_set.get(channel=channel)
+      return info.mode
+
+   def setChanMode(self, channel, value):
+      info = self.userircinfo_set.get(channel=channel)
+      info.mode = modifyMode(info.mode, value)
+      info.save() ## shouldn't, but far away so do it
+
+## TODO: a similar method in peerchat should be using thisone
+def modifyMode(mode, mod):
+   ## TODO? handle args that come after space at end of mode?
+   #mode, args = mode.split(' ')
+   args = []
+   for match in re.finditer('([+-])(\w)', mod):
+      sign, flag = match.groups()
+      if sign == '+':
+         mode = ''.join(set(mode + flag))
+      else:
+         mode = ''.join(set(mode) - set(flag))
+   return '+'+' '.join([mode] + args)
+
 @aspects.Aspect(Persona)
-class _PersonaWrap:
+class _PersonaAspect:
    ''' not yet needed
    def _get_name_dirty(self):
       if ' ' in self.name:
@@ -122,17 +163,15 @@ class _PersonaWrap:
 
 
 @aspects.Aspect(Stats)
-class _StatsWrap:
+class _StatsAspect:
    @classmethod
    def getStats(cls, name, chanName):
-      #@synchronized()
-      def fetch():
-         persona = db.Persona.objects.get(name__iexact=name)
-         channel = db.Channel.objects.get(name__iexact=chanName)
+      persona = Persona.objects.get(name__iexact=name)
+      channel = Channel.objects.get(name__iexact=chanName)
+      @djangoAsync(persona)
+      def dbOps():
          return cls.objects.get_or_create(persona=persona, channel=channel)[0]
-      ## XXX: broken
-      #return threads.deferToThread(fetch)
-      return defer.maybeDeferred(fetch)
+      return dbOps()
 
    username = property(lambda self: self.persona.user.getIrcUserString())
 
@@ -176,7 +215,7 @@ def syncAccount(username):
                             ).addCallbacks(cbRunQuery, ebRunQuery)
 
 @aspects.Aspect(LoginSession)
-class _LoginSession:
+class _LoginSessionAspect(object):
    def __init__(self, *args, **kw):
       ## TODO: decrypt,generate this
       #self.key = 'SUeWiB5BXq4h6R8PCn4oPAAAKD0.'
@@ -259,7 +298,7 @@ class _LoginSession:
          return syncAccount(username).addCallbacks(cbSync, ebSync).addCallbacks(cbGotUser, ebGetUser)
 
 @aspects.Aspect(Theater)
-class _TheaterWrap:
+class _TheaterAspect(object):
    sessionClass = LoginSession
 
    @classmethod
@@ -278,7 +317,6 @@ class _TheaterWrap:
       Player.objects.create(user_id=session.user_id, game_id=game_id)
 
    def CreateSession(self, ip, port):
-
       ## HACK FIXME XXX TODO!!!!!!!!!!: prune these more regularly and also when we get an exception+disconnect in a connection
 
       ## prune old sessions in case they got left behind
@@ -313,6 +351,29 @@ class _TheaterWrap:
       elif host != None:
          return User.objects.get(login=host).player_set[0]
 
+class djangoAsync(object):
+   def __init__(self, model):
+      self.model = model
+
+   def __call__(self, func):
+      def djangoAsyncWrapper(*args, **kw):
+         done = defer.Deferred()
+         ## XXX: this is still flawed, because if a channel is saved somewhere outside of these two
+         ## methods (which it currently isn't), the race condition is back again.
+         def sigSaved(**kw):
+            if kw['instance'] is self.model:
+               #print(kw)
+               signals.post_save.disconnect(sigSaved, sender=self.model.__class__)
+               done.callback(result)
+
+         result = func(*args, **kw)
+
+         ## XXX: i'm really after other stuff like when channel.users is saved, but this will have to do...
+         signals.post_save.connect(sigSaved, sender=self.model.__class__)
+         self.model.save()
+
+         return done
+      return djangoAsyncWrapper
 
 ##HACK: clean login sessions at startup
 for sess in LoginSession.objects.all():

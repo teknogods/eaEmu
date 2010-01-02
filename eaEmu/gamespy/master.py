@@ -10,7 +10,7 @@ from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.protocols.portforward import *
 from twisted.internet.tcp import Server
 
-from . import db
+from .. import db
 from .. import util
 from ..util import aspects
 from ..util.enum import Enum

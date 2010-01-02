@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import twisted.plugin
-import eaEmu.util.aspects2 as aspects
+from eaEmu.util import aspects
 import eaEmu.twistd
 from twisted.application.service import IServiceMaker
 from zope.interface import implements
