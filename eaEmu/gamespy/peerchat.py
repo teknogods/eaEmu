@@ -276,7 +276,7 @@ class Peerchat(IRCUser, object):
    def irc_SETCKEY(self, prefix, params):
       params = [unicode(x) for x in params]
       chan, nick, fields = params
-      assert nick == self.avatar.getPersona().name
+      assert nick == self.avatar.getPersona().name, 'nick={0} is not equal to personaName={1}'.format(nick, self.avatar.getPersona().name)
       tokens  = fields.split('\\')[1:]
       changes = dict(zip(tokens[::2], tokens[1::2]))
       changes = dict((k, v if v != '' else None) for k, v in changes.iteritems()) ## change blanks to nulls
