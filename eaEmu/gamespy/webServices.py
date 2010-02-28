@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import re
 
 from twisted.web.server import Site
@@ -6,8 +7,12 @@ from twisted.web.static import File
 from twisted.web.error import NoResource
 
 # generate the classes with 'wsdl2py -wb http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx?WSDL'
-from soap.StorageServer_server import *
-from soap.StorageServer_server import StorageServer as StorageServerBase
+from .soap.StorageServer_server import *
+StorageServerBase = StorageServer
+from .soap.AuthService_server import *
+AuthServiceBase = AuthService
+from .soap.CompetitionService_server import *
+CompetitionServiceBase = CompetitionService
 
 # TODO: use this for logging
 from .. import util
@@ -45,8 +50,6 @@ class StorageServer(StorageServerBase):
       r = StorageServerBase._writeResponse(self, response, request, status)
       return r
 
-from soap.AuthService_server import *
-from soap.AuthService_server import AuthService as AuthServiceBase
 class AuthService(AuthServiceBase):
    def soap_LoginRemoteAuth(self, ps, **kw):
       request = ps.Parse(LoginRemoteAuthSoapIn.typecode)
@@ -75,8 +78,6 @@ class AuthService(AuthServiceBase):
 
       return request, result
 
-from soap.CompetitionService_server import *
-from soap.CompetitionService_server import CompetitionService as CompetitionServiceBase
 class CompetitionService(CompetitionServiceBase):
    def soap_SetReportIntention(self, ps, **kw):
       request = ps.Parse(SetRemoteIntentionSoapIn.typecode)

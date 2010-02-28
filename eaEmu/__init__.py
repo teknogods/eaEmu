@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import yaml
 import logging
 import logging.config
 
@@ -32,3 +33,19 @@ if os.path.isfile(logCfg):
    LogObs().start()
 else:
    print('{0} not found -- network traffic logging disabled.'.format(logCfg))
+
+def loadConfig(filePath):
+   with open(filePath) as configFile:
+      global config
+      config = yaml.load(configFile.read())
+      return config
+
+# this gets filled in by eaEmu.twistd, normally, but do this
+# just in case something is trying to import a module that
+# relies on it's presence.
+try:
+   config = loadConfig('config.yml')
+except:
+   print('couldnt load config')
+   config = None
+

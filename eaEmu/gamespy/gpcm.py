@@ -1,13 +1,14 @@
+from __future__ import absolute_import
 import logging
 import random
 
 from twisted.internet.protocol import ServerFactory
 
+from . import cipher
 from .login import LoginServer
 from .message import MessageFactory
-from .. import db
-from . import cipher
 from .. import util
+from ..db import *
 
 ## i'm pretty sure gpcm stands for GamesPy CoMrade??
 class Comrade(LoginServer):
@@ -37,10 +38,10 @@ class Comrade(LoginServer):
 
       #HACK,  TODO: extract info from real authtoken, once i can decode it
       # for now, find by looking at pseudo-authToken
-      self.user = user = db.User.objects.get(login=msg.authtoken.strip('"'))
+      self.user = user = User.objects.get(login=msg.authtoken.strip('"'))
       persona = user.getPersona()
 
-      #persona = db.Persona(name='Jackalus', user=user)
+      #persona = Persona(name='Jackalus', user=user)
       #print ('proof', user.password, persona.name, msg.challenge, self.sChal)
       blk = [] ## dunno what this is
       self.sendMsg(MessageFactory.getMessage([('blk', len(blk)), ('list', ','.join(blk))]))
@@ -82,14 +83,14 @@ class Comrade(LoginServer):
       ## HACK: race condition here too (if client disconnects as we're sending)
       #  \ka\\final\
       try:
-         persona = db.Persona.objects.get(id=who)
+         persona = Persona.objects.get(id=who)
          ## TODO: RE all the other bm/10* status msgs. there are a lot, grep the logs
          self.factory.conns[persona.user].sendMsg(MessageFactory.getMessage([
             ('bm', 101),
             ('f', persona.id), ## f = from?
             ('msg', '|'.join(['', 'p', msg.productid, 'l', ' '.join(tokens)])),
          ]))
-      except db.Persona.DoesNotExist, ex: ## TODO, FIXME: sometimes (always firsttime for coop invite)I get weird ids, including the BE int of my old publicip?? where are these vals coming from
+      except Persona.DoesNotExist, ex: ## TODO, FIXME: sometimes (always firsttime for coop invite)I get weird ids, including the BE int of my old publicip?? where are these vals coming from
          ## and what is the proper way to handle them??
          print 'couldnt lookup profile id:', who
          print 'heres full msg:', msg

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import logging
 import threading
 import re
@@ -10,11 +11,10 @@ from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.protocols.portforward import *
 from twisted.internet.tcp import Server
 
-from .. import db
-from .. import util
-from ..util import aspects
-from ..util.enum import Enum
 from .cipher import CipherFactory
+from ..db import *
+from ..util import aspects, getLogger
+from ..util.enum import Enum
 
 class MasterMsg(Enum):
    CHALLENGE_RESPONSE = 0x01
@@ -46,7 +46,7 @@ class HeartbeatMaster(DatagramProtocol):
    bandwidth and CPU usage by running the heartbeat service as UDP. heartbeat packets can get dropped too.
    '''
    def datagramReceived(self, data, (host, port)):
-      self.log = util.getLogger('gamespy.heartbeatMaster', host=host, port=port)
+      self.log = getLogger('gamespy.heartbeatMaster', host=host, port=port)
       msgId, clientId, body = ord(data[0]), struct.unpack('!L', data[1:][:4])[0], data[5:]
       if msgId == MasterMsg.AVAILABLE:
          # eg, '\x09\0\0\0\0redalert3pc\0':
@@ -76,15 +76,15 @@ class HeartbeatMaster(DatagramProtocol):
          ## sometimes, messages come with just ip update info and no groupid or hostname. I'm assuming the 4byte id is used to identify the session.
          if 'groupid' not in info:
             self.log.debug('weird msg from {0}:{1} clientid={2} data={3}'.format(host, port, clientId, repr(data)))
-            session = db.MasterGameSession.objects.get(clientId=clientId)
+            session = MasterGameSession.objects.get(clientId=clientId)
          else:
             try:
                ## HACK: grab old instance, if it exists
-               session = db.MasterGameSession.objects.get(hostname=info['hostname'])
+               session = MasterGameSession.objects.get(hostname=info['hostname'])
                session.clientId = clientId
-            except db.MasterGameSession.DoesNotExist, ex:
+            except MasterGameSession.DoesNotExist, ex:
                ## create new session
-               session = db.MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=db.Channel.objects.get(id=info['groupid']))
+               session = MasterGameSession.objects.create(hostname=info['hostname'], clientId=clientId, channel=Channel.objects.get(id=info['groupid']))
 
          ## update and save the info
          for k, v in info.iteritems():
@@ -109,7 +109,7 @@ class HeartbeatMaster(DatagramProtocol):
 class ProxyMasterClient(ProxyClient):
    def connectionMade(self):
       ProxyClient.connectionMade(self)
-      self.log = util.getLogger('gamespy.masterCli', self)
+      self.log = getLogger('gamespy.masterCli', self)
 
    def dataReceived(self, data):
       dec = self.peer.decoder.Decode(data)
@@ -132,7 +132,7 @@ class ProxyMasterServer(ProxyServer):
 
    def connectionMade(self):
       ProxyServer.connectionMade(self)
-      self.log = util.getLogger('gamespy.masterSrv', self)
+      self.log = getLogger('gamespy.masterSrv', self)
 
    def dataReceived(self, data):
       self.log.debug('received: '+repr(data))
@@ -176,7 +176,7 @@ class QueryMasterMessage(dict):
 class QueryMaster(Protocol):
    def connectionMade(self):
       Protocol.connectionMade(self)
-      self.log = util.getLogger('gamespy.master', self)
+      self.log = getLogger('gamespy.master', self)
 
    def dataReceived(self, data):
       # first 8 are binary with some nulls, so have to skip those manually before splitting
@@ -230,7 +230,7 @@ class QueryMaster(Protocol):
       response += '\0' ## TODO : use vals list
       if match:
          groupId = match.group(1)
-         for session in db.MasterGameSession.objects.filter(channel__id=groupId):
+         for session in MasterGameSession.objects.filter(channel__id=groupId):
             ## prune any stale entries that have had no updates for 2 mins
             if session.updated < datetime.now() - timedelta(minutes=2):
                session.delete()
@@ -305,7 +305,7 @@ class QueryMaster(Protocol):
          ## 'w', lasttraced ip, port, privateip, privport, all fields in short form (byte values, nulls, or null-term'ed strings)
          ## 'U', publicip, publicport, all fields as above...
          ## these must be succeded with IP_UPDATE messeages
-         for session in db.MasterGameSession.objects.filter(channel__id=groupId):
+         for session in MasterGameSession.objects.filter(channel__id=groupId):
             ## TODO: merge with above into func
             response = (
                chr(ResponseType.GAME_RESULT)
@@ -352,7 +352,7 @@ class QueryMaster(Protocol):
 
 
    def handle_getRooms(self, msg):
-      channels = db.Channel.objects.filter(game__name=self.factory.gameName, name__startswith='gpg')
+      channels = Channel.objects.filter(game__name=self.factory.gameName, name__startswith='gpg')
       ep = self.transport.getPeer()
       self.sendMsg(
          inet_aton(ep.host)

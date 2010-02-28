@@ -1,16 +1,6 @@
-import random
-import base64
-from datetime import datetime
+from __future__ import absolute_import
 
-from twisted.internet import defer
-from twisted.internet import threads
-
-from .gamespy.cipher import *
-from .util.password import *
-from .util import aspects
-from .ea import errors
 from . import config
-
 try:
    import django.conf
    if not django.conf.settings.configured:
@@ -19,6 +9,8 @@ try:
    from .models import *
 except Exception, e:
    print 'Exception while importing django modules:', e
+   import traceback
+   traceback.print_exc()
    ## generate dummy classes here so we can at least load up
    import new
    def makeMod(modname):
@@ -34,6 +26,17 @@ except Exception, e:
    makeClasses('django.db.models.base', ['ModelBase'])
    makeClasses('models', ['Game'])
    #FIXME
+from .gamespy.cipher import *
+from .util.password import *
+from .util import aspects
+from .ea import errors
+
+from twisted.internet import defer
+from twisted.internet import threads
+
+import random
+import base64
+from datetime import datetime
 
 # TODO: use class method assignment rather than metaclasses??
 

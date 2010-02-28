@@ -7,12 +7,7 @@ from twisted.application.service import IServiceMaker
 from twisted.application import internet
 from twisted.python.usage import portCoerce
 
-def loadConfig(filePath):
-   with open(filePath) as configFile:
-      import eaEmu
-      eaEmu.config = yaml.load(configFile.read())
-      return eaEmu.config
-
+from . import loadConfig
 
 ## TODO: migrate to a eaEmu service that uses flags or config.yml to determine what services run
 ## The service should be put together based on what's in the tap section of config.yml

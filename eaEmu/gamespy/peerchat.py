@@ -1,6 +1,11 @@
+from __future__ import absolute_import
 from __future__ import print_function
-import logging
-import re
+
+from ..db import *
+from .cipher import *
+from .. import util
+from ..util import aspects
+from ..util.timer import KeepaliveService
 
 from django.db import transaction
 
@@ -18,11 +23,8 @@ from twisted.words import iwords
 from twisted.python import failure
 from twisted.internet.tcp import Server
 
-from ..db import *
-from .cipher import *
-from .. import util
-from ..util import aspects
-from ..util.timer import KeepaliveService
+import logging
+import re
 
 ## TODO: all db access should go into Channel and User
 ## They should also all use Deferreds

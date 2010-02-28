@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from twisted.protocols.portforward import *
 from twisted.internet import reactor
 from twisted.internet.ssl import ClientContextFactory

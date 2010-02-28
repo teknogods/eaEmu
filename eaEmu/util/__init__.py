@@ -1,5 +1,8 @@
+from __future__ import absolute_import
 import logging
 import threading
+
+from .aspects import *
 
 def getLogger(prefix, protocol=None, host=None, port=None):
    if protocol:
@@ -65,9 +68,6 @@ def Singleton(clsToDecorate):
    #return Singleton
    clsToDecorate.__new__ = __new__
    return clsToDecorate
-
-from .aspects import *
-
 
 def Singleton(target):
    def newWrap(klass, *args):

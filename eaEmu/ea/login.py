@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # TODO: enforce unique personas and give appropriate reply if a name is unavailable
 
 
