@@ -1,31 +1,32 @@
 from __future__ import absolute_import
-import re
+
+from ..util import aspects, getLogger
+
+import warnings
+with warnings.catch_warnings():
+   warnings.simplefilter('ignore')
+   # generate the classes with 'wsdl2py -wb http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx?WSDL'
+   from .soap.StorageServer_server import *
+   from .soap.AuthService_server import *
+   from .soap.CompetitionService_server import *
+StorageServerBase = StorageServer
+AuthServiceBase = AuthService
+CompetitionServiceBase = CompetitionService
 
 from twisted.web.server import Site
 from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.web.error import NoResource
 
-# generate the classes with 'wsdl2py -wb http://redalert3pc.sake.gamespy.com/SakeStorageServer/StorageServer.asmx?WSDL'
-from .soap.StorageServer_server import *
-StorageServerBase = StorageServer
-from .soap.AuthService_server import *
-AuthServiceBase = AuthService
-from .soap.CompetitionService_server import *
-CompetitionServiceBase = CompetitionService
-
-# TODO: use this for logging
-from .. import util
-from ..util import aspects
-import logging # delme once switched
+import re
 
 class StorageServer(StorageServerBase):
    def soap_SearchForRecords(self, ps, **kw):
       #TODO: write helpers that will covert dict+lists into these calls
       request = ps.Parse(SearchForRecordsSoapIn.typecode)
-      logging.getLogger('gamespy.web.SakeStorage').debug(request.__dict__)
-      logging.getLogger('gamespy.web.SakeStorage').debug(request._ownerids.__dict__)
-      logging.getLogger('gamespy.web.SakeStorage').debug(request._fields.__dict__)
+      getLogger('gamespy.web.SakeStorage').debug(request.__dict__)
+      getLogger('gamespy.web.SakeStorage').debug(request._ownerids.__dict__)
+      getLogger('gamespy.web.SakeStorage').debug(request._fields.__dict__)
       result = SearchForRecordsSoapOut()
       result.SearchForRecordsResult = 'Success'
       result.Values = result.new_values()
@@ -46,14 +47,14 @@ class StorageServer(StorageServerBase):
       #response = response.replace('<SOAP-ENV:Header></SOAP-ENV:Header>', '')
       #response = response.replace('<ns1:values></ns1:values>', '<ns1:values />')
       #response = '<?xml version="1.0" encoding="utf-8"?>' + response
-      logging.getLogger('gamespy.web.sake').debug(response)
+      getLogger('gamespy.web.sake').debug(response)
       r = StorageServerBase._writeResponse(self, response, request, status)
       return r
 
 class AuthService(AuthServiceBase):
    def soap_LoginRemoteAuth(self, ps, **kw):
       request = ps.Parse(LoginRemoteAuthSoapIn.typecode)
-      logging.getLogger('gamespy.web.AuthService').debug(request.__dict__)
+      getLogger('gamespy.web.AuthService').debug(request.__dict__)
       result = LoginRemoteAuthSoapOut()
       result.LoginRemoteAuthResult = result.new_LoginRemoteAuthResult()
       result.LoginRemoteAuthResult.ResponseCode = 0
@@ -81,7 +82,7 @@ class AuthService(AuthServiceBase):
 class CompetitionService(CompetitionServiceBase):
    def soap_SetReportIntention(self, ps, **kw):
       request = ps.Parse(SetRemoteIntentionSoapIn.typecode)
-      logging.getLogger('gamespy.web.CompetitionService').debug(request.__dict__)
+      getLogger('gamespy.web.CompetitionService').debug(request.__dict__)
       result = SetReportIntentionSoapOut()
       result.SetReportIntentionResult = result.new_SetReportIntentionResult()
       result.SetReportIntentionResult.Result = 0

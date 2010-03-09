@@ -46,7 +46,7 @@ def fwdDRC(self, data):
 class Service(MultiService):
    def __init__(self, addresses=None):
       MultiService.__init__(self)
-      sCtx = OpenSSLContextFactoryFactory.getFactory('EA')
+      sCtx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
 
       addresses = dict(addresses)
       host = 'nfsps2-pc.fesl.ea.com'

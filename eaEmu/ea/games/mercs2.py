@@ -1,7 +1,10 @@
-import time
-import random
-import logging
-import base64
+from __future__ import absolute_import
+
+#from ..login import EaServer, MessageHandler
+from ..login import * # all handlers too
+from ..message import Message
+from ...util import getLogger
+from ...db import *
 
 from twisted.application.internet import SSLServer, TCPServer
 from twisted.application.service import MultiService
@@ -9,14 +12,15 @@ from twisted.protocols.portforward import *
 from twisted.internet.protocol import ServerFactory
 #from twisted.application.internet import TimerService
 
-from fesl import *
-from matchmaking import *
-import util
+import time
+import random
+import logging
+import base64
 
-class Mercs2Session(EaSession):
+class Mercs2Session(LoginSession):
    def __init__(self, *args, **kw):
       super(Mercs2Session, self).__init__(*args, **kw)
-      self.theater = Mercs2Theater.objects.get(id=self.theater.id) #HACK so self.theater.method() works
+      self.theater = Theater.objects.get(name='mercs2')
 
    # Here's how a session is hosted and joined. (I think) Message
    # sequence is left-to-right, top-to-bottom in this table.
@@ -126,14 +130,12 @@ class Mercs2Session(EaSession):
       })
 
 
-class Mercs2Theater(Theater):
+@aspects.Aspect(Theater)
+class _TheaterAspect(object):
    sessionClass = Mercs2Session
    connections = {} #HACKy way to access protocol objects via session id
-   # TODO: distribute connections across multiple server instances, rest of data shared via DB
-   def CreateSession(*args, **kw):
-      return Theater.CreateSession(*args, **kw)
 
-mercs2theater = Mercs2Theater.objects.get(name='mercs2')
+mercs2theater = Theater.getTheater('mercs2')
 
 class Mercs2LoginServer(EaServer):
    theater = mercs2theater
@@ -210,10 +212,10 @@ class Mercs2LoginServer(EaServer):
          self.factory.log.warning('request with id={0}, txn={1} unhandled!'.format(msg.id, msg.map['TXN']))
       return replies
 
-class Mercs2Msg_Status(EaMessage):
+class Mercs2Msg_Status(Message):
    def __init__(self, games):
       id = 605 #TODO, FIXME
-      EaMessage.__init__(self, 'pnow', 0x80000000, {
+      Message.__init__(self, 'pnow', 0x80000000, {
          'TXN':'Status',
          'id.id':id,
          'id.partition': msg.map['partition.partition'], # FIXME
@@ -496,20 +498,21 @@ class Mercs2TheaterServer(EaServer): #kinda a HACKy misnomer but quick way to in
 
 class Mercs2LoginFactory(ServerFactory):
    protocol = Mercs2LoginServer
-   log = util.getLogger('fesl.mercs2', self)
+   log = util.getLogger('fesl.mercs2')
 
 class Mercs2TheaterFactory(ServerFactory):
    protocol = Mercs2TheaterServer
-   log = util.getLogger('theater.mercs2', self)
+   log = util.getLogger('theater.mercs2')
 
-class Mercs2Service(MultiService):
-   def __init__(self, addresses=None):
+class Service(MultiService):
+   def __init__(self, **options):
+      basePort = 18710
       MultiService.__init__(self)
-      sCtx = OpenSSLContextFactoryFactory.getFactory('EA')
+      sCtx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
       sFact = Mercs2LoginFactory()
       #sFact = makeTLSFwdFactory('fesl.fwdCli', 'fesl.fwdSer', fwdDRC, fwdDRS)(*address)
-      self.addService(SSLServer(addresses[0][1], sFact, sCtx))
+      self.addService(SSLServer(basePort, sFact, sCtx))
       sFact = Mercs2TheaterFactory()
       #sFact = makeTCPFwdFactory('theater.fwdCli', 'theater.fwdSer', fwdDRC, fwdDRS)(*address)
-      self.addService(TCPServer(addresses[0][1]+1, sFact))
+      self.addService(TCPServer(basePort+1, sFact))
 

@@ -526,7 +526,7 @@ class Burnout08Service(MultiService):
    def __init__(self, addresses=None):
       MultiService.__init__(self)
 
-      ctx = OpenSSLContextFactoryFactory.getFactory('EA')
+      ctx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
       fact = Burnout08LoginServerFactory()
       #fact = makeTLSFwdFactory('fesl.fwdCli', 'fesl.fwdSer', fC, fS)(*address)
       self.addService(SSLServer(addresses[0][1], fact, ctx))
