@@ -4,7 +4,7 @@ import os
 from subprocess import *
 
 def updateModels():
-   modFile = 'eaEmu/dj/eaEmu/models.py'
+   modFile = 'eaEmu/models.py'
    f = open(modFile, 'w')
    f.write('from django.db import models\n\n')
    f.close()
@@ -18,16 +18,19 @@ def updateModels():
    Popen(cmd, shell=True).wait()
 
 def runManager():
-   from django.core.management import execute_manager
    try:
-      sys.path.append('.')
-      from eaEmu.dj import settings
-   except ImportError:
-      sys.stderr.write('''Error: Can't find eaEmu.dj.settings from %r. It appears you've customized things.
-   You'll have to run django-admin.py, passing it your settings module.
-   ''' % __file__)
+      import django.conf
+      import yaml
+      config = yaml.load(open('config.yml').read())
+      django.conf.settings.configure(**config['django'])
+   except Exception, ex:
+      sys.stderr.write('Error: Can\'t load config.yml\n')
+      import traceback
+      traceback.print_exc()
       sys.exit(1)
-   execute_manager(settings)
+   from django.core.management import execute_from_command_line
+   sys.path.append('.')
+   execute_from_command_line()
 
 if __name__ == "__main__":
    updateModels()

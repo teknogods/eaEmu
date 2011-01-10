@@ -27,3 +27,8 @@ V	241025234022Z		36	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Onlin
 V	241025235127Z		37	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=fesl.ea.com
 V	241218150210Z		38	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=pcburnout08.ea.com
 V	251003220741Z		39	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=prodgos28.ea.com
+V	47481012080236Z		3A	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=fesl.ea.com
+V	47481012080400Z		3B	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=kebl.in
+V	47481012093153Z		3C	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=kebl.in
+V	47481101060150Z		3D	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=gosredirector.ea.com
+V	47481101060746Z		3E	unknown	/C=US/ST=California/O=Electronic Arts, Inc./OU=Online Technology Group/CN=gosredirector.ea.com

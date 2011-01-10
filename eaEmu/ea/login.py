@@ -282,7 +282,7 @@ class EaMsgHlr_Hello(MessageHandler):
          'messengerIp':'messaging.ea.com',
          'messengerPort':13505,
          'theaterIp':ep.host,
-         'theaterPort':ep.port + 1,
+         'theaterPort':ep.port + 5, ##HACK, don't hardcode this port here, tight coupling
          #'domainPartition.domain':'eagames',
          #'domainPartition.subDomain':'MERCS2',
       })

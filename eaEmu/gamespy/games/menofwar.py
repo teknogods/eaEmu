@@ -1,17 +1,20 @@
 import random
 import string
 
+from twisted.application.internet import TCPServer, UDPServer
 from twisted.internet.protocol import ServerFactory
 from twisted.application.service import MultiService
+from twisted.protocols.portforward import ProxyClient, ProxyServer
 
-from matchmaking import *
-from gamespy import *
-from util.fwdserver import *
-import util
+from ..login import LoginServer
+from ...util.fwdserver import makeTCPFwdFactory
+from ..master import makeRecv, ProxyMasterServerFactory
+from ..peerchat import ProxyPeerchatServerFactory
+from ..message import GamespyMessage
 
-gameId = 'menofwarpc'
+gameId = 'menofwaras'
 
-class MowLoginServer(gamespy.login.LoginServer):
+class MowLoginServer(LoginServer):
    def recv_registercdkey(self, msg):
       #[[('registercdkey', ''), ('sesskey', '14734748'), ('cdkeyenc', 'VcuyoQaIr[Q1Ij2oe5[VOJYkMA__'), ('id', '2')]]
       self.sendMsg(GamespyMessage([('rc', ''), ('id', '2')]))
@@ -20,14 +23,15 @@ class MowLoginServer(gamespy.login.LoginServer):
       #[[('getprofile', ''), ('sesskey', '14734748'), ('profileid', '37347566'), ('id', '3')]
       self.sendMsg(GamespyMessage([
          ('pi', ''),
-         ('profileid', '37347566'),
-         ('nick', 'Ivarr Morthvargr'),
-         ('userid', '32082456'), ('sig', 'addf62001720ffbac4459ec2f5005643'),
-         ('uniquenick', 'IvarrMorthvargr'),
+         ('profileid', '31317566'),
+         ('nick', 'Dummy Nickname'),
+         ('userid', '31081456'),
+         ('sig', 'addf62001720ffbac4459ec2f5005643'),
+         ('uniquenick', 'DummyUniqueNick'),
          ('p/d', '0'),
-         ('firstname', 'Tim'),
-         ('lastname', 'Myers II'),
-         ('homepage', 'www.amalekite.com'),
+         ('firstname', 'John'),
+         ('lastname', 'Public'),
+         ('homepage', 'your.webpage.url'),
          ('zipcode', '97123'),
          ('countrycode', 'US'),
          ('birthday', '202115005'),
@@ -43,40 +47,32 @@ class MowLoginServer(gamespy.login.LoginServer):
       
 class MowLoginServerFactory(ServerFactory):
    protocol = MowLoginServer
-   log = util.getLogger('gamespy.mowServ', self)
    gameId = gameId
    
-   def buildProtocol(self, addr):
-      p = ServerFactory.buildProtocol(self, addr)
-      p.theater = Theater.getTheater(self.gameId)
-      return p
-   
-class MowService(MultiService):
-   def __init__(self, address=None):
+class Service(MultiService):
+   def __init__(self, **options):
       MultiService.__init__(self)
-      
-      # login server gpcm.gamespy.com
-      address = ('207.38.11.34', 29900)
+
+      address = ('gpcm.gamespy.com', 29900)
       sFact = MowLoginServerFactory()
       #sFact = makeTCPFwdFactory('gamespy.gpcmCli', 'gamespy.gpcmSrv', makeRecv(ProxyClient), makeRecv(ProxyServer))(*address)
       self.addService(TCPServer(address[1], sFact))
       
-      # ('menofwarpc.gamestats.gamespy.com', 29920),
-      address = ('207.38.11.49', 29920)
+      address = ('peerchat.gamespy.com', 6667)
+      sFact = ProxyPeerchatServerFactory(gameId, *address)
+      #sFact = makeTCPFwdFactory('gamespy.peerCli', 'gamespy.peerSrv', makeRecv(ProxyClient, True), makeRecv(ProxyServer, True))(*address)
+      self.addService(TCPServer(address[1], sFact))
+
+      address = ('%s.gamestats.gamespy.com' % (gameId,), 29920)
       sFact = makeTCPFwdFactory('gamespy.stat1cli', 'gamespy.stat1srv', makeRecv(ProxyClient, True), makeRecv(ProxyServer, True))(*address)
       self.addService(TCPServer(address[1], sFact))
       
-      # ('menofwarpc.master.gamespy.com', 29910), # 29910 is keycheck, 27900 for natneg
-      address = ('207.38.11.14', 28910)
-      #sFact = makeTCPFwdFactory('gamespy.masterCli', 'gamespy.masterSrv', recvMasterCli, recvMasterSrv)(*address)
-      sFact = ProxyMasterServerFactory(gameId, *address)
-      self.addService(TCPServer(address[1], sFact))
-
-      # peerchat.gamespy.com
-      address = ('207.38.11.136', 6667)
-      sFact = ProxyPeerchatServerFactory(*address)
+      # ('menofwarpc.master.gamespy.com', 29910), # 29910 UDP is keycheck ('gamespy' xor), 27900 for gameinfo/natneg(?)
+      address = ('%s.master.gamespy.com' % (gameId,), 28910)
+      sFact = makeTCPFwdFactory('gamespy.masterCli', 'gamespy.masterSrv', makeRecv(ProxyClient, True), makeRecv(ProxyServer, True))(*address)
+      #sFact = ProxyMasterServerFactory(gameId, *address)
       self.addService(TCPServer(address[1], sFact))
 
       # ('menofwarpc.available.gamespy.com', 27900),
       #self.addService(TCPServer(80, DownloadsServerFactory()))
-      self.addService(UDPServer(27900, AvailableServer()))
+      #self.addService(UDPServer(27900, AvailableServer()))

@@ -5,6 +5,7 @@ import string
 from twisted.internet.protocol import Protocol, ServerFactory
 
 from .message import MessageFactory
+from .cipher import gs_login_proof
 from ..util.timer import KeepaliveService
 from .. import util
 
@@ -61,7 +62,7 @@ class LoginServer(Protocol):
       # ('productid', '2544'), ('gamename', 'menofwarpcd'), ('namespaceid', '1'), ('sdkrevision', '11'),
       # ('quiet', '0'), ('id', '1')]
       user =  msg.uniquenick
-      pwd = 'pass'
+      pwd = 'a' # HACK
       self.sendMsg(MessageFactory.getMessage([('blk', '0'), ('list', '')]))
       self.sendMsg(MessageFactory.getMessage([('bdy', '0'), ('list', '')])) ## buddy list
       self.sendMsg(MessageFactory.getMessage([
@@ -70,7 +71,8 @@ class LoginServer(Protocol):
          ('proof', gs_login_proof(pwd, user, msg.challenge, self.sChal)),
          ('userid', str(random.getrandbits(32))),
          ('profileid', str(random.getrandbits(32))),
-         ('uniquenick', user),         ('lt', 'XdR2LlH69XYzk3KCPYDkTY__'),
+         ('uniquenick', user),
+         ('lt', 'XdR2LlH69XYzk3KCPYDkTY__'),
          ('id', '1')
       ]))
 

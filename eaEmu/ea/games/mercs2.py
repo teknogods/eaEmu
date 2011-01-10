@@ -510,9 +510,9 @@ class Service(MultiService):
       MultiService.__init__(self)
       sCtx = OpenSSLContextFactoryFactory.getFactory('fesl.ea.com')
       sFact = Mercs2LoginFactory()
-      #sFact = makeTLSFwdFactory('fesl.fwdCli', 'fesl.fwdSer', fwdDRC, fwdDRS)(*address)
+      #sFact = makeTLSFwdFactory('fesl.fwdCli', 'fesl.fwdSer')('mercs2-pc.fesl.ea.com', basePort)
       self.addService(SSLServer(basePort, sFact, sCtx))
       sFact = Mercs2TheaterFactory()
-      #sFact = makeTCPFwdFactory('theater.fwdCli', 'theater.fwdSer', fwdDRC, fwdDRS)(*address)
-      self.addService(TCPServer(basePort+1, sFact))
+      #sFact = makeTCPFwdFactory('theater.fwdCli', 'theater.fwdSer')('mercs2-pc.theater.ea.com', basePort+5)
+      self.addService(TCPServer(basePort+5, sFact))
 
