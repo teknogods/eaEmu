@@ -412,3 +412,10 @@ class QueryMasterEncryption(object):
       self.cipher = CipherFactory(self.factory.gameName).getMasterCipher(msg['validate'])
       yield aspects.proceed
 
+
+# key server runs on udp port 29910 and accepts the following datagrams, xored with repeated string 'gamespy' (restarts at beginning of word every datagram):
+# '\\ka\\'
+# '\\auth\\\\pid\\3210\\ch\\ulgdjfnqgigyswtgnzcewpyoscwckhst\\resp\\86b626aaa89482d1a78fc9de7dc6f69f4a34604a0535c29ef94f148c167fdc9e10dad860\\ip\\1647773464\\skey\\917\\reqproof\\1\\'
+# (those two typically form the request) the reply can be any of the following:
+# '\\unok\\\\cd\\86b626aaa89482d1a78fc9de7dc6f69f\\skey\\917\\errmsg\\Your CD Key is disabled. Contact customer service.'
+# see Luigi Auriemma's gskeycheck.c for reference on hash composition
