@@ -20,7 +20,21 @@ from xml.dom.minidom import *
 import re
 
 #Type dictionary translation types SQL -> Django
-tsd = {"text":"TextField" , "date":"DateField" , "varchar":"CharField" , "int":"IntegerField" , "float":"FloatField" , "serial":"AutoField" , "boolean":"BooleanField" , "numeric":"FloatField" , "timestamp":"DateTimeField" , "bigint":"IntegerField" , "datetime":"DateTimeField"  , "date":"DateField" , "time" : "TimeField" , "bool" : "BooleanField" , "int" : "IntegerField"}
+tsd = {
+   "text":"TextField" ,
+   "varchar":"Unicode" ,
+   "int":"Int" ,
+   "float":"Float" ,
+#"serial":"AutoField" ,
+   "boolean":"Bool" ,
+   "bool" : "Bool" ,
+   "numeric":"Float" ,
+   "timestamp":"DateTime" ,
+   "bigint":"Int" ,
+   "datetime":"DateTime"  ,
+   "date":"Date" ,
+   "time" : "Time" ,
+}
 
 #convert varchar -> CharField
 v2c = re.compile('varchar\((\d+)\)')
@@ -71,7 +85,7 @@ def dia2django(archivo):
                 if j.nodeType==Node.ELEMENT_NODE and j.hasAttributes():
                     if j.getAttribute("name")=="name":
                         actclas=j.getElementsByTagName("dia:string")[0].childNodes[0].data[1:-1]
-                        myname= "\nclass %s(models.Model) :\n" % actclas
+                        myname= "\nclass %s(object) :\n" % actclas
                         clases[actclas]=[[],myid,myname,0]
                     if j.getAttribute("name")=="attributes":
                         for l in j.getElementsByTagName("dia:composite") :
@@ -121,7 +135,7 @@ def dia2django(archivo):
                                     else :
                                         tc="models.%s(%s)" %(tc ,val)
                                 elif varch==None :
-                                    tc="models."+tsd[tc.strip().lower()]+"("+val+")"
+                                    tc=tsd[tc.strip().lower()]+"("+val+")"
                                 else :
                                     tc="models.CharField(max_length="+varch.group(1)+")"
                                     if len(val)>0 :
@@ -146,7 +160,7 @@ def dia2django(archivo):
     #First we make a list of the classes each classs is related to.
     ordered=[]
     for j,k in clases.iteritems():
-        k[2]=k[2]+"\n    def __unicode__(self):\n        return u\"\"\n"
+#k[2]=k[2]+"\n    def __unicode__(self):\n        return u\"\"\n"
         for fk in k[0] :
             if fk not in dependclasses:
                 clases[fk][3]+=1

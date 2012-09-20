@@ -393,3 +393,220 @@ for chan in Channel.objects.all():
 for stats in Stats.objects.all():
    stats.delete()
 
+
+
+## storm rewrite:
+from storm.locals import *
+
+class Game(object):
+   __storm_table__ = 'eaEmu_game'
+   id = Int(primary=True)
+   name = Unicode()
+   key = Unicode()
+   description = Unicode()
+
+class Theater(object):
+   __storm_table__ = 'eaEmu_theater'
+   id = Int(primary=True)
+   name = Unicode()
+
+class User(object):
+   __storm_table__ = 'eaEmu_user'
+   id = Int(primary=True)
+   phpbb_id = Int()
+   login = Unicode()
+   password = Unicode()
+   created = DateTime()
+   lastLogin = DateTime()
+   email = Unicode()
+   active = Bool()
+   notes = Unicode()
+
+class CdKey(object):
+   __storm_table__ = 'eaEmu_cdkey'
+   id = Int(primary=True)
+   game_id = Int()
+   game = Reference(game_id, Game.id)
+   user_id = Int()
+   user = Reference(user_id, User.id)
+   cdKey = Unicode()
+
+class ChannelUser(object):
+   __storm_table__ = 'eaEmu_channel_users'
+   #__storm_primary__ = ('channel_id', 'user_id')
+   id = Int(primary=True)
+   channel_id = Int()
+   user_id = Int()
+
+class Channel(object) :
+   __storm_table__ = 'eaEmu_channel'
+   id = Int(primary=True)
+   name = Unicode()
+   prettyName = Unicode()
+   game_id = Int()
+   game = Reference(game_id, Game.id)
+   mode = Unicode()
+   topic = Unicode()
+   users = ReferenceSet(id, ChannelUser.channel_id, ChannelUser.user_id, User.id)
+
+
+
+class MasterGameSession(object) :
+   __storm_table__ = 'eaEmu_mastergamesession'
+   id = Int(primary=True)
+   #clientId = models.DecimalField(max_digits=10, decimal_places=0, unique=True)
+   clientId = Int() # needs to be able to hold 32bit unsigned
+   channel_id = Int()
+   channel = Reference(channel_id, Channel.id)
+   updated = DateTime(auto_now=True)
+   hostname = Unicode()
+   gamemode = Unicode()
+   mapname = Unicode()
+   vCRC = Unicode()
+   iCRC = Unicode()
+   cCRC = Unicode()
+   joinable = Int()
+   localip0 = Unicode()
+   localip1 = Unicode()
+   localip2 = Unicode()
+   localip3 = Unicode()
+   localport = Int()
+   obs = Int()
+   numRPlyr = Int()
+   numplayers = Int()
+   maxRPlyr = Int()
+   maxplayers = Int()
+   numObs = Int()
+   mID = Unicode()
+   mod = Unicode()
+   modv = Unicode()
+   name = Unicode()
+   pings = Unicode()
+   publicip = Unicode()
+   publicport = Int()
+   pw = Int()
+   teamAuto = Unicode()
+   natneg = Int()
+   statechanged = Int()
+   rules = Unicode()
+
+
+class ArenaTeam(object) :
+   __storm_table__ = 'eaEmu_arenateam'
+   id = Int(primary=True)
+
+
+class GameList(object) :
+   __storm_table__ = 'eaEmu_gamelist'
+   id = Int(primary=True)
+
+
+class LoginSession(object) :
+   __storm_table__ = 'eaEmu_loginsession'
+   id = Int(primary=True)
+   user_id = Int() ## make me unique for 1-to-1 relationship
+   user = Reference(user_id, User.id)
+   theater_id = Int()
+   theater = Reference(theater_id, Theater.id)
+   created = DateTime(auto_now_add=True)
+   key = Unicode()
+   intIp = Unicode()
+   intPort = Int()
+   extIp = Unicode()
+   extPort = Int()
+
+
+class UserIrcInfo(object) :
+   __storm_table__ = 'eaEmu_userircinfo'
+   id = Int(primary=True)
+   user_id = Int()
+   user = Reference(user_id, User.id)
+   channel_id = Int()
+   channel = Reference(channel_id, Channel.id)
+   mode = Unicode()
+
+
+class GameSession(object) :
+   __storm_table__ = 'eaEmu_gamesession'
+   id = Int(primary=True)
+   host_id = Int() ## 1to1
+   host = Reference(host_id, User.id)
+   created = DateTime()
+   list_id = Int()
+   list = Reference(list_id, GameList.id)
+   ekey = Unicode()
+   secret = Unicode()
+   uid = Unicode()
+   slots = Int()
+   theater_id = Int()
+   theater = Reference(theater_id, Theater.id)
+   info = Unicode()
+   session_id = Int()
+   session = Reference(session_id, LoginSession.id)
+
+
+class EnterGameRequest(object) :
+   __storm_table__ = 'eaEmu_entergamerequest'
+   id = Int(primary=True)
+   game_id = Int()
+   game = Reference(game_id, GameSession.id)
+   slot = Int()
+   session_id = Int()
+   session = Reference(session_id, LoginSession.id)
+
+
+class Player(object) :
+   __storm_table__ = 'eaEmu_player'
+   id = Int(primary=True)
+   user_id = Int()
+   user = Reference(user_id, User.id)
+   game_id = Int()
+   game = Reference(game_id, GameSession.id)
+
+
+
+class PersonaFriend(object) :
+   __storm_table__ = 'eaEmu_persona'
+   #__storm_primary__ = ('from_persona_id', 'to_persona_id')
+   id = Int(primary=True)
+   from_persona_id = Int()
+   to_persona_id = Int()
+
+class Persona(object) :
+   __storm_table__ = 'eaEmu_persona'
+   id = Int(primary=True)
+   user_id = Int()
+   user = Reference(user_id, User.id)
+   name = Unicode()
+   selected = Bool()
+   friends = ReferenceSet(id, PersonaFriend.from_persona_id, PersonaFriend.to_persona_id, id)
+
+
+class Stats(object) :
+   __storm_table__ = 'eaEmu_stats'
+   id = Int(primary=True)
+   channel_id = Int()
+   channel = Reference(channel_id, Channel.id)
+   persona_id = Int()
+   persona = Reference(persona_id, Persona.id)
+   b_flags = Unicode()
+   b_clanName = Unicode()
+   b_arenaTeamID_id = Int()
+   b_arenaTeamID = Reference(b_arenaTeamID_id, ArenaTeam.id)
+   b_locale = Int()
+   b_wins = Int()
+   b_losses = Int()
+   b_rank1v1 = Int()
+   b_rank2v2 = Int()
+   b_clan1v1 = Int()
+   b_clan2v2 = Int()
+   b_elo1v1 = Int()
+   b_elo2v2 = Int()
+   b_onlineRank = Int()
+
+database = create_database('mysql://eaEmu:HZeLpG2rB825LnFc@localhost:3306/eaEmu')
+store =  Store(database)
+o = store.find(User, User.login == u'Keb').one()
+o.personas
+print(o)
+
